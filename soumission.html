@@ -101,6 +101,8 @@
   .feelist div { align-items: baseline; }
   .feelist span:first-child { text-align: left; }
   .feelist span:last-child { white-space: nowrap; font-weight: 700; }
+  .feelist .landed { border-top: 1px solid #d8b24a; margin-top: 2px; padding-top: 2px; color: var(--ink); font-weight: 700; }
+  .feelist .landed span:first-child { white-space: nowrap; }
   td.act { white-space: nowrap; text-align: center; }
   /* Frais ajoutés au coût (carburant, transport, autres) */
   button.fees { display: block; width: 100%; margin-top: 1px; padding: 1px 3px; font-size: 10px; line-height: 1.3;
@@ -465,6 +467,15 @@
         ((f.w || "avant") === "apres" ? " ap." : "");
       d.appendChild(a); d.appendChild(b); box.appendChild(d);
     });
+    // Coût de revient (coût + frais avant marge), affiché dès qu'il y a des frais
+    var landed = tr.dataset.landed !== "" ? Number(tr.dataset.landed) : NaN;
+    if (box.children.length && isFinite(landed)) {
+      var t = document.createElement("div"); t.className = "landed";
+      t.innerHTML = "<span>Coût de revient</span><span></span>";
+      t.lastChild.textContent = num2.format(landed);
+      t.title = "Coût + frais avant marge (les frais après marge s'ajoutent au prix de vente)";
+      box.appendChild(t);
+    }
   }
   function updateFeeButton(tr) {
     updateFeeList(tr);
