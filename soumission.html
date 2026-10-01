@@ -83,10 +83,24 @@
   td.internal input.derived { color: #8a6500; font-weight: 700; }
   td.calc input.manual { color: var(--ink); font-style: italic; }
   td.internal input.manual { font-style: italic; }
-  .col-qty { width: 5%; } .col-item { width: 19%; } .col-code { width: 11%; } .col-dim { width: 11%; }
-  .col-sqft { width: 7%; } .col-cost { width: 9%; } .col-marge { width: 7%; } .col-vm { width: 11%; }
+  .col-qty { width: 5%; } .col-item { width: 17%; } .col-code { width: 10%; } .col-dim { width: 10%; }
+  .col-sqft { width: 7%; } .col-cost { width: 13%; } .col-marge { width: 7%; } .col-vm { width: 11%; }
   .col-vu { width: 10%; } .col-tot { width: 10%; } .col-act { width: 92px; }
-  .hide-totals .col-item { width: 29%; }
+  .hide-totals .col-item { width: 27%; }
+  /* Bouton ↺ : revenir au calcul automatique (visible quand la case est modifiée à la main) */
+  td.resettable { position: relative; }
+  td.resettable button.reset { display: none; position: absolute; left: 0; top: 4px; border: none; background: none;
+    padding: 0 2px; font-size: 12px; color: #8a6500; cursor: pointer; line-height: 1.4; }
+  td.resettable input.manual ~ button.reset { display: block; }
+  td.resettable input.manual { padding-left: 14px; }
+  td.resettable input::placeholder { color: transparent; }
+  td.resettable input.manual::placeholder { color: #b9a46a; font-style: italic; font-weight: 400; }
+  /* Liste des frais sous le coût */
+  .feelist { font-size: 10px; line-height: 1.35; color: #8a6500; padding: 1px 2px 2px 5px; cursor: pointer; }
+  .feelist div { display: flex; justify-content: space-between; gap: 4px; }
+  .feelist div { align-items: baseline; }
+  .feelist span:first-child { text-align: left; }
+  .feelist span:last-child { white-space: nowrap; font-weight: 700; }
   td.act { white-space: nowrap; text-align: center; }
   /* Frais ajoutés au coût (carburant, transport, autres) */
   button.fees { display: block; width: 100%; margin-top: 1px; padding: 1px 3px; font-size: 10px; line-height: 1.3;
@@ -253,11 +267,12 @@
   <div class="no-print add-row">
     <button id="btnAdd">+ Ajouter une ligne</button>
     <div class="legend">Les colonnes en jaune (<b>Pi²</b>, <b>Coût</b>, <b>Marge</b>) ne s'impriment jamais. Vendant / mille = coût de revient ÷ (1 − marge), où le coût de revient = coût + frais avant marge (bouton <b>+ frais</b> sous la marge : surcharge carburant, transport, autres, en $ ou en %, chacun avant ou après la marge ; les frais après marge s'ajoutent au prix de vente).
-      <b>Pi² / unité</b> : calculés à partir des dimensions (ex. <i>49 x 97</i>, <i>4' x 8'</i>, <i>2800 x 2070 mm</i>) et modifiables à la main ; effacez-les pour revenir au calcul.
+      <b>Pi² / unité</b> : calculés à partir des dimensions (ex. <i>49 x 97</i>, <i>4' x 8'</i>, <i>2800 x 2070 mm</i>) et modifiables à la main.
       Vendant / unité = vendant/mille × pi² ÷ 1000, ou vendant/mille ÷ 1000 si les dimensions sont vides (quincaillerie au mille).
       Vous pouvez aussi entrer directement un vendant : la marge est alors calculée (en brun). Si un vendant / mille est entré, il a priorité sur le vendant / unité.
       Si seul le vendant / unité est entré, aucun prix au mille n'est affiché et la marge est calculée avec le coût comme coût unitaire.
-      Effacez un vendant entré à la main pour revenir au calcul automatique.</div>
+      Une case de prix ou de pi² modifiée à la main reste telle quelle, même vidée ; cliquez sur <b>↺</b> pour revenir au calcul automatique.
+      Si le vendant / mille est vidé, l'item est traité comme vendu à l'unité : le coût est un coût unitaire et le vendant / unité = coût ÷ (1 − marge).</div>
   </div>
   <div class="grand-total" id="summary"><div class="box">
     <div class="srow sub"><span class="lbl">Sous-total</span><b id="subTotal">0,00 $</b></div>
@@ -361,6 +376,7 @@
   // ---------- Lignes ----------
   var FIELDS = ["qty", "item", "code", "dim", "sqft", "cost", "marge", "vm", "vu"];
 
+  var RESET = '<button type="button" class="reset no-print" data-a="reset" tabindex="-1" title="Revenir au calcul automatique">↺</button>';
   function rowTemplate() {
     var tr = document.createElement("tr");
     tr.innerHTML =
@@ -368,12 +384,12 @@
       '<td><textarea data-f="item" rows="1"></textarea></td>' +
       '<td><input data-f="code"></td>' +
       '<td><input data-f="dim" placeholder="49 x 97"></td>' +
-      '<td class="num internal"><input data-f="sqft" inputmode="decimal"></td>' +
-      '<td class="num internal"><input data-f="cost" inputmode="decimal"></td>' +
+      '<td class="num internal resettable"><input data-f="sqft" inputmode="decimal" placeholder="vide">' + RESET + '</td>' +
+      '<td class="num internal"><input data-f="cost" inputmode="decimal"><div class="feelist" data-a="fees" title="Cliquer pour modifier les frais"></div></td>' +
       '<td class="num internal"><input data-f="marge" inputmode="decimal">' +
         '<button type="button" class="fees" data-a="fees" title="Surcharge carburant, transport, autres frais">+ frais</button></td>' +
-      '<td class="num calc"><input data-f="vm" inputmode="decimal"></td>' +
-      '<td class="num calc"><input data-f="vu" inputmode="decimal"></td>' +
+      '<td class="num calc resettable"><input data-f="vm" inputmode="decimal" placeholder="vide">' + RESET + '</td>' +
+      '<td class="num calc resettable"><input data-f="vu" inputmode="decimal" placeholder="vide">' + RESET + '</td>' +
       '<td class="num tot"><input data-f="tot" readonly tabindex="-1"></td>' +
       '<td class="act">' +
         '<button type="button" data-a="up" title="Monter">▲</button>' +
@@ -435,9 +451,25 @@
     if (ap) out.push("+ " + ap + " ap.");
     return out.join(" · ");
   }
+  var FEE_NAMES = { fuel: "Carburant", transport: "Transport", other: "Autres frais" };
+  function updateFeeList(tr) {
+    var fees = getFees(tr), box = tr.querySelector(".feelist");
+    box.innerHTML = "";
+    FEE_KEYS.forEach(function (k) {
+      var f = fees[k], v = f ? parseNum(f.v) : NaN;
+      if (!isFinite(v) || v === 0) return;
+      var d = document.createElement("div"), a = document.createElement("span"), b = document.createElement("span");
+      a.textContent = (k === "other" && (f.label || "").trim()) || FEE_NAMES[k];
+      a.title = a.textContent;
+      b.textContent = "+" + (f.u === "%" ? num2.format(v).replace(/,00$/, "") + " %" : num2.format(v) + " $") +
+        ((f.w || "avant") === "apres" ? " ap." : "");
+      d.appendChild(a); d.appendChild(b); box.appendChild(d);
+    });
+  }
   function updateFeeButton(tr) {
+    updateFeeList(tr);
     var b = tr.querySelector("button.fees"), sum = feeSummary(getFees(tr));
-    b.textContent = sum || "+ frais";
+    b.textContent = sum ? "✎ frais" : "+ frais";
     b.classList.toggle("on", !!sum);
     b.title = sum ? "Frais (ap. = après marge) : " + sum + " (cliquer pour modifier)" : "Surcharge carburant, transport, autres frais";
   }
@@ -468,14 +500,14 @@
     updateFeeButton(tr);
     var margeI = q(tr, "marge");
     var vmI = q(tr, "vm"), vuI = q(tr, "vu");
-    var vmManual = vmI.classList.contains("manual") && vmI.value.trim() !== "";
-    var vuManual = vuI.classList.contains("manual") && vuI.value.trim() !== "";
+    var vmManual = vmI.classList.contains("manual");
+    var vuManual = vuI.classList.contains("manual");
 
     // Pi² par unité : calculés à partir des dimensions, sauf si entrés à la main
     var dimText = q(tr, "dim").value;
     var sqI = q(tr, "sqft"), sq;
-    if (sqI.classList.contains("manual") && sqI.value.trim() !== "") {
-      sq = parseNum(sqI.value);
+    if (sqI.classList.contains("manual")) {
+      sq = parseNum(sqI.value); // vide = aucun pi²
     } else {
       sqI.classList.remove("manual");
       var area = areaSqFt(dimText);
@@ -485,16 +517,22 @@
     // Facteur mille → unité (null si pi² inconnus et dimensions non vides)
     var factor = isFinite(sq) && sq > 0 ? sq / 1000 : (!dimText.trim() ? 1 / 1000 : null);
 
-    var vm, priceDriven = false, priceForMargin;
-    if (vmManual) {
-      vm = parseNum(vmI.value); priceDriven = true; priceForMargin = removeAfterFees(vm, fees);
-    } else if (vuManual) {
+    // Une case vidée à la main reste vide (manual + valeur vide).
+    // Vendant / mille vidé = item sans prix au mille : le coût est alors un coût unitaire.
+    var vmVal = parseNum(vmI.value), vuVal = parseNum(vuI.value);
+    var vmBlank = vmManual && !isFinite(vmVal), vuBlank = vuManual && !isFinite(vuVal);
+    var unitMode = vmBlank;
+    var vm, priceDriven = false, priceForMargin, unitPrice = NaN;
+    if (vmManual && !vmBlank) {
+      vm = vmVal; priceDriven = true; priceForMargin = removeAfterFees(vm, fees);
+    } else if (vuManual && !vuBlank) {
       // Item vendu à l'unité : pas de prix au mille, le coût est un coût unitaire
-      vm = NaN; vmI.value = "";
-      priceDriven = true; priceForMargin = removeAfterFees(parseNum(vuI.value), fees);
+      vm = NaN; if (!vmManual) vmI.value = "";
+      priceDriven = true; priceForMargin = removeAfterFees(vuVal, fees);
     } else {
-      vm = addAfterFees(priceFromCost(cost, parseNum(margeI.value)), fees);
-      vmI.value = isFinite(vm) ? num2.format(vm) : "";
+      var p = addAfterFees(priceFromCost(cost, parseNum(margeI.value)), fees);
+      if (unitMode) { vm = NaN; unitPrice = p; }
+      else { vm = p; vmI.value = isFinite(vm) ? num2.format(vm) : ""; }
     }
     if (priceDriven) {
       var m = marginFromPrice(cost, priceForMargin);
@@ -504,9 +542,9 @@
 
     var vu;
     if (vuManual) {
-      vu = parseNum(vuI.value);
+      vu = vuVal; // NaN si vidée
     } else {
-      vu = isFinite(vm) && factor ? vm * factor : NaN;
+      vu = unitMode ? unitPrice : (isFinite(vm) && factor ? vm * factor : NaN);
       vuI.value = isFinite(vu) ? num2.format(vu) : "";
     }
     var qty = parseNum(q(tr, "qty").value);
@@ -540,15 +578,14 @@
 
   tbody.addEventListener("input", function (e) {
     var el = e.target, tr = el.closest("tr"), f = el.dataset.f;
-    if (f === "sqft") el.classList.toggle("manual", el.value.trim() !== "");
-    if (f === "vm" || f === "vu") {
-      // Saisie manuelle : on fige la valeur ; vide = retour au calcul automatique
-      el.classList.toggle("manual", el.value.trim() !== "");
-      // Un vendant / mille saisi a priorité : le vendant / unité redevient calculé
-      if (f === "vm" && el.value.trim() !== "") q(tr, "vu").classList.remove("manual");
-    }
-    // Saisir une marge = c'est elle qui fixe le prix
-    if (f === "marge") { q(tr, "vm").classList.remove("manual"); q(tr, "vu").classList.remove("manual"); }
+    // Saisie manuelle : la valeur est figée, même vide (bouton ↺ pour revenir au calcul)
+    if (f === "sqft" || f === "vm" || f === "vu") el.classList.add("manual");
+    // Un vendant / mille saisi a priorité : le vendant / unité redevient calculé
+    if (f === "vm" && el.value.trim() !== "") q(tr, "vu").classList.remove("manual");
+    // Saisir une marge = c'est elle qui fixe le prix (les cases vidées volontairement restent vides)
+    if (f === "marge") ["vm", "vu"].forEach(function (k) {
+      var i = q(tr, k); if (i.value.trim() !== "") i.classList.remove("manual");
+    });
     if (el.tagName === "TEXTAREA") autosize(el);
     recalcAll(); save();
   });
@@ -570,9 +607,10 @@
     }
   });
   tbody.addEventListener("click", function (e) {
-    var b = e.target.closest("button"); if (!b) return;
+    var b = e.target.closest("button, .feelist"); if (!b) return;
     var tr = b.closest("tr"), a = b.dataset.a;
     if (a === "fees") { openFees(tr, b); return; }
+    if (a === "reset") { b.parentNode.querySelector("input").classList.remove("manual"); }
     if (a === "del") { if (feeRow === tr) closeFees(); tr.remove(); if (!tbody.rows.length) addRow(); }
     if (a === "dup") addRow(rowData(tr), tr);
     if (a === "up" && tr.previousElementSibling) tr.previousElementSibling.before(tr);
@@ -635,7 +673,7 @@
   });
   document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !feePanel.hidden) closeFees(); });
   document.addEventListener("mousedown", function (e) {
-    if (!feePanel.hidden && !feePanel.contains(e.target) && !e.target.closest("button.fees")) closeFees();
+    if (!feePanel.hidden && !feePanel.contains(e.target) && !e.target.closest("button.fees, .feelist")) closeFees();
   });
 
   function rowData(tr) {
