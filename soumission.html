@@ -168,7 +168,7 @@
 <div class="toolbar no-print">
   <button class="primary" id="btnPdf" title="Ouvre la boîte d'impression : choisir « Enregistrer en PDF »">⬇ Exporter PDF</button>
   <button id="btnNew">Nouvelle soumission</button>
-  <button id="btnSave" title="Enregistre la soumission dans un fichier .json pour la rouvrir plus tard">Enregistrer (.json)</button>
+  <button id="btnSave" title="Enregistre la soumission (.json) pour la rouvrir plus tard : vous choisissez le dossier">Enregistrer (.json)</button>
   <label class="btn" for="fileOpen" title="Rouvrir une soumission enregistrée">Ouvrir…</label>
   <input type="file" id="fileOpen" accept=".json,application/json">
   <span class="spacer"></span>
@@ -505,9 +505,11 @@
     save();
   });
 
+  // Nom de fichier : Client - N° de soumission - Date (AAAA-MM-JJ)
   function fileBaseName() {
-    var parts = ["Soumission", $("quoteNo").value, $("client").value, $("project").value]
+    var parts = [$("client").value, $("quoteNo").value, $("date").value]
       .map(function (s) { return s.trim(); }).filter(Boolean);
+    if (!parts.length) parts = ["Soumission"];
     return parts.join(" - ").replace(/[\\/:*?"<>|]/g, "-");
   }
 
@@ -570,11 +572,28 @@
     setTimeout(exitPrintMode, 500);
   });
 
-  $("btnSave").addEventListener("click", function () {
-    var blob = new Blob([JSON.stringify(collect(), null, 2)], { type: "application/json" });
+  $("btnSave").addEventListener("click", async function () {
+    var json = JSON.stringify(collect(), null, 2);
+    var name = fileBaseName() + ".json";
+    // Chrome / Edge : fenêtre « Enregistrer sous » pour choisir le dossier
+    // (le dernier dossier utilisé est retenu pour la prochaine fois)
+    if (window.showSaveFilePicker) {
+      try {
+        var handle = await window.showSaveFilePicker({
+          id: "soumissions", startIn: "documents", suggestedName: name,
+          types: [{ description: "Soumission", accept: { "application/json": [".json"] } }]
+        });
+        var w = await handle.createWritable();
+        await w.write(json); await w.close();
+        return;
+      } catch (e) {
+        if (e && e.name === "AbortError") return; // annulé par l'utilisateur
+      }
+    }
+    // Autres navigateurs : téléchargement classique
     var a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = fileBaseName() + ".json";
+    a.href = URL.createObjectURL(new Blob([json], { type: "application/json" }));
+    a.download = name;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
   });
