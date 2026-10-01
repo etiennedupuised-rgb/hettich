@@ -1,0 +1,542 @@
+<!doctype html>
+<html lang="fr-CA">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Soumission</title>
+<style>
+  :root {
+    --ink: #1d232b;
+    --muted: #5f6b78;
+    --line: #d5dbe2;
+    --soft: #f3f5f8;
+    --brand: #0b4f8a;
+    --brand-ink: #ffffff;
+    --internal: #fff6e0;
+    --internal-line: #f0d48a;
+    --danger: #b3261e;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #e9edf2; color: var(--ink);
+    font: 14px/1.4 "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+
+  /* ---------- Barre d'outils (écran seulement) ---------- */
+  .toolbar { position: sticky; top: 0; z-index: 10; display: flex; flex-wrap: wrap; gap: 8px;
+    align-items: center; padding: 10px 16px; background: #fff; border-bottom: 1px solid var(--line); }
+  .toolbar .spacer { flex: 1; }
+  button, .btn { font: inherit; border: 1px solid var(--line); background: #fff; color: var(--ink);
+    border-radius: 6px; padding: 7px 12px; cursor: pointer; }
+  button:hover, .btn:hover { background: var(--soft); }
+  button.primary { background: var(--brand); border-color: var(--brand); color: var(--brand-ink); font-weight: 600; }
+  button.primary:hover { filter: brightness(1.1); }
+  button.icon { padding: 3px 8px; line-height: 1; }
+  button.danger { color: var(--danger); }
+  .toolbar label.chk { display: inline-flex; gap: 6px; align-items: center; color: var(--muted); }
+  input[type=file] { display: none; }
+
+  /* ---------- Page ---------- */
+  .page { width: 1060px; max-width: calc(100% - 32px); margin: 20px auto 60px; background: #fff;
+    padding: 0.55in 0.5in; box-shadow: 0 2px 14px rgba(0,0,0,.08); border-radius: 4px; }
+
+  input, textarea { font: inherit; color: inherit; border: 1px solid transparent; background: transparent;
+    border-radius: 4px; padding: 3px 5px; width: 100%; }
+  input:hover, textarea:hover { border-color: var(--line); }
+  input:focus, textarea:focus { outline: none; border-color: var(--brand); background: #fff; }
+  textarea { resize: vertical; overflow: hidden; min-height: 2.2em; }
+  ::placeholder { color: #a7b0ba; }
+
+  header.top { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px;
+    padding-bottom: 14px; border-bottom: 3px solid var(--brand); }
+  .logo-box { position: relative; min-width: 220px; max-width: 320px; cursor: pointer; }
+  .logo-box img { max-height: 80px; max-width: 320px; display: block; }
+  .wordmark { font-weight: 800; font-size: 22px; letter-spacing: .5px; color: var(--brand); line-height: 1.05; }
+  .wordmark small { display: block; font-size: 11px; font-weight: 600; letter-spacing: 2px; color: var(--muted); }
+  .logo-hint { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .company textarea { font-size: 12px; color: var(--muted); margin-top: 6px; min-width: 260px; }
+
+  .doc-title { text-align: right; }
+  .doc-title h1 { margin: 0 0 6px; font-size: 26px; letter-spacing: 3px; color: var(--brand); }
+  .doc-title .row { display: flex; justify-content: flex-end; align-items: center; gap: 6px; }
+  .doc-title .row span { color: var(--muted); font-size: 12px; white-space: nowrap; }
+  .doc-title input { width: 150px; text-align: right; }
+
+  .info { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 24px; margin: 18px 0 8px; }
+  .field label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .8px;
+    color: var(--muted); font-weight: 600; margin-bottom: 1px; padding-left: 5px; }
+  .field input { font-size: 15px; font-weight: 600; }
+  .field.full { grid-column: 1 / -1; }
+  .field.full textarea { font-size: 13px; }
+
+  /* ---------- Tableau ---------- */
+  table.items { width: 100%; border-collapse: collapse; margin-top: 14px; table-layout: fixed; }
+  table.items th { background: var(--brand); color: var(--brand-ink); font-size: 11px; text-transform: uppercase;
+    letter-spacing: .5px; font-weight: 600; padding: 7px 5px; text-align: left; }
+  table.items td { border-bottom: 1px solid var(--line); padding: 2px 2px; vertical-align: top; }
+  table.items tbody tr:nth-child(even) td { background: #fafbfc; }
+  table.items .num, table.items .num input { text-align: right; }
+  table.items th.internal { background: #c99a1e; }
+  table.items td.internal { background: var(--internal) !important; }
+  table.items td textarea { min-height: 1.9em; padding: 3px 5px; }
+  td.calc input { color: var(--brand); font-weight: 600; }
+  td.calc input.manual { color: var(--ink); font-style: italic; }
+  .dimhint { font-size: 10px; color: var(--muted); padding: 0 5px 2px; min-height: 0; }
+  .col-qty { width: 6%; } .col-item { width: 22%; } .col-code { width: 12%; } .col-dim { width: 13%; }
+  .col-cost { width: 10%; } .col-marge { width: 7%; } .col-vm { width: 11%; } .col-vu { width: 10%; }
+  .col-tot { width: 10%; } .col-act { width: 92px; }
+  .hide-totals .col-item { width: 32%; }
+  .print-only { display: none; }
+  td.act { white-space: nowrap; text-align: center; }
+  td.act button { border: none; background: none; color: var(--muted); padding: 3px 4px; }
+  td.act button:hover { color: var(--danger); }
+  .hide-totals .col-tot, .hide-totals td.tot { display: none; }
+  .add-row { margin-top: 8px; }
+  .grand-total { display: flex; justify-content: flex-end; margin-top: 10px; }
+  .grand-total div { min-width: 260px; display: flex; justify-content: space-between; gap: 16px;
+    border-top: 2px solid var(--brand); padding-top: 6px; font-weight: 700; font-size: 15px; }
+  .hide-totals .grand-total { display: none; }
+  .legend { font-size: 11px; color: var(--muted); margin-top: 6px; }
+  .legend b { color: #8a6500; }
+
+  /* ---------- Notes ---------- */
+  .notes { margin-top: 22px; border: 1px solid var(--line); border-left: 4px solid var(--brand);
+    border-radius: 4px; padding: 10px 12px; background: var(--soft); }
+  .notes h2 { margin: 0 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: var(--brand); }
+  .notes textarea { font-size: 13px; }
+  .mention { margin-top: 16px; text-align: center; font-weight: 700; font-style: italic; color: var(--ink);
+    letter-spacing: .3px; }
+  footer.sig { margin-top: 26px; display: flex; justify-content: space-between; gap: 24px; font-size: 12px; color: var(--muted); }
+  footer.sig .line { border-top: 1px solid var(--ink); padding-top: 4px; min-width: 240px; }
+
+  @media (max-width: 760px) {
+    .page { padding: 16px; }
+    header.top { flex-direction: column; }
+    .doc-title { text-align: left; } .doc-title .row { justify-content: flex-start; }
+    .info { grid-template-columns: 1fr; }
+    .table-wrap { overflow-x: auto; }
+    table.items { min-width: 900px; }
+  }
+
+  /* ---------- Impression / PDF ---------- */
+  @page { size: letter portrait; margin: 0.45in 0.45in 0.55in; }
+  @media print {
+    html, body { background: #fff; }
+    .toolbar, .no-print, .logo-hint, td.act, th.col-act, .legend, .dimhint { display: none !important; }
+    .page { width: auto; max-width: none; margin: 0; padding: 0; box-shadow: none; border-radius: 0; }
+    /* Coût et marge jamais visibles par le client */
+    .internal { display: none !important; }
+    tr.blank { display: none; }
+    input, textarea { border: none !important; padding-left: 0; padding-right: 0; resize: none; }
+    input::placeholder, textarea::placeholder { color: transparent; }
+    .empty-print { display: none !important; }
+    table.items th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    table.items tbody tr:nth-child(even) td, .notes, header.top { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    table.items tr { break-inside: avoid; }
+    table.items thead { display: table-header-group; }
+    td.calc input { color: var(--ink); font-style: normal; }
+    .notes, .mention, footer.sig, .grand-total { break-inside: avoid; }
+    /* Largeurs une fois coût / marge retirés */
+    col.col-act { width: 0; }
+    .col-qty { width: 7%; } .col-item { width: 32%; } .col-code { width: 14%; } .col-dim { width: 14%; }
+    .col-vm { width: 12%; } .col-vu { width: 11%; } .col-tot { width: 10%; }
+    .hide-totals .col-item { width: 42%; }
+    textarea { field-sizing: content; height: auto !important; min-height: 0; }
+    input[type=date] { display: none; }
+    .print-only { display: inline-block; min-width: 150px; text-align: right; padding: 3px 0; }
+    .page { padding: 0; }
+    .field label { padding-left: 0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="toolbar no-print">
+  <button class="primary" id="btnPdf" title="Ouvre la boîte d'impression : choisir « Enregistrer en PDF »">⬇ Exporter PDF</button>
+  <button id="btnNew">Nouvelle soumission</button>
+  <button id="btnSave" title="Enregistre la soumission dans un fichier .json pour la rouvrir plus tard">Enregistrer (.json)</button>
+  <label class="btn" for="fileOpen" title="Rouvrir une soumission enregistrée">Ouvrir…</label>
+  <input type="file" id="fileOpen" accept=".json,application/json">
+  <label class="btn" for="fileLogo" title="Choisir l'image du logo (gardée en mémoire dans ce navigateur)">Logo…</label>
+  <input type="file" id="fileLogo" accept="image/*">
+  <span class="spacer"></span>
+  <label class="chk"><input type="checkbox" id="chkTotals" style="width:auto"> Afficher les totaux</label>
+  <label class="chk" title="Marge calculée sur le prix de vente (vendant = coût ÷ (1 − marge)). Décoché : majoration sur le coût (vendant = coût × (1 + marge))."><input type="checkbox" id="chkMarginMode" style="width:auto" checked> Marge sur prix de vente</label>
+</div>
+
+<div class="page" id="page">
+  <header class="top">
+    <div>
+      <div class="logo-box" id="logoBox" title="Cliquer pour changer le logo">
+        <img id="logoImg" alt="Commonwealth Plywood" style="display:none">
+        <div class="wordmark" id="wordmark">COMMONWEALTH<br>PLYWOOD</div>
+        <div class="logo-hint">Cliquer pour importer le logo (PNG/JPG/SVG)</div>
+      </div>
+      <div class="company"><textarea id="company" data-persist="settings" rows="2" placeholder="Adresse de la succursale · Téléphone · Courriel"></textarea></div>
+    </div>
+    <div class="doc-title">
+      <h1>SOUMISSION</h1>
+      <div class="row"><span>N° :</span><input id="quoteNo" placeholder="S-0001"></div>
+      <div class="row"><span>Date :</span><input id="date" type="date"><b class="print-only" data-date-for="date"></b></div>
+      <div class="row"><span>Valide jusqu'au :</span><input id="validUntil" type="date"><b class="print-only" data-date-for="validUntil"></b></div>
+    </div>
+  </header>
+
+  <section class="info">
+    <div class="field"><label for="client">Nom du client</label><input id="client" placeholder="Ébénisterie …"></div>
+    <div class="field"><label for="project">Nom du projet</label><input id="project" placeholder="Cuisine résidence …"></div>
+    <div class="field"><label for="seller">Vendeur</label><input id="seller" data-persist="settings" placeholder="Votre nom"></div>
+    <div class="field"><label for="sellerContact">Coordonnées du vendeur</label><input id="sellerContact" data-persist="settings" placeholder="Téléphone · courriel"></div>
+    <div class="field full"><label for="extra">Infos complémentaires</label><textarea id="extra" rows="2" placeholder="Adresse de livraison, délai, conditions, etc."></textarea></div>
+  </section>
+
+  <div class="table-wrap">
+    <table class="items" id="items">
+      <colgroup>
+        <col class="col-qty"><col class="col-item"><col class="col-code"><col class="col-dim">
+        <col class="col-cost internal"><col class="col-marge internal">
+        <col class="col-vm"><col class="col-vu"><col class="col-tot"><col class="col-act">
+      </colgroup>
+      <thead>
+        <tr>
+          <th class="num">Qté</th>
+          <th>Item</th>
+          <th>Code de produit</th>
+          <th>Dimensions</th>
+          <th class="num internal">Coût</th>
+          <th class="num internal">Marge %</th>
+          <th class="num">Vendant / mille</th>
+          <th class="num">Vendant / unité</th>
+          <th class="num col-tot">Total</th>
+          <th class="col-act"></th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+  <div class="no-print add-row">
+    <button id="btnAdd">+ Ajouter une ligne</button>
+    <div class="legend">Les colonnes <b>Coût</b> et <b>Marge</b> (en jaune) ne s'impriment jamais. Vendant / mille = coût ÷ (1 − marge).
+      Vendant / unité = vendant/mille × pi² ÷ 1000 si les dimensions sont reconnues (ex. <i>49 x 97</i>, <i>4' x 8'</i>, <i>2800 x 2070 mm</i>),
+      ou vendant/mille ÷ 1000 si les dimensions sont vides (quincaillerie au mille). Toute valeur calculée peut être modifiée à la main ; effacez-la pour revenir au calcul automatique.</div>
+  </div>
+  <div class="grand-total"><div><span>Total (avant taxes)</span><span id="grandTotal">0,00 $</span></div></div>
+
+  <section class="notes">
+    <h2>Notes importantes</h2>
+    <textarea id="notes" rows="3" placeholder="Ex. : Taxes en sus. Livraison incluse dans la zone régulière. Délais à confirmer au moment de la commande."></textarea>
+  </section>
+
+  <p class="mention">Prix sujets à changement sans préavis</p>
+
+  <footer class="sig">
+    <div class="line">Préparé par : <span id="sigSeller"></span></div>
+    <div class="line">Acceptation du client (signature / date)</div>
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var DRAFT_KEY = "cwp-soumission-brouillon";
+  var SETTINGS_KEY = "cwp-soumission-parametres";
+  var LOGO_KEY = "cwp-soumission-logo";
+  var $ = function (id) { return document.getElementById(id); };
+  var tbody = $("tbody");
+
+  function store(key, val) { try { localStorage.setItem(key, val); } catch (e) {} }
+  function load(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
+
+  // ---------- Nombres ----------
+  var money = new Intl.NumberFormat("fr-CA", { style: "currency", currency: "CAD" });
+  var num2 = new Intl.NumberFormat("fr-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  function parseNum(s) {
+    if (s == null) return NaN;
+    s = String(s).replace(/[\s  $%]/g, "").replace(",", ".");
+    if (s === "") return NaN;
+    return Number(s);
+  }
+  function fmtMoney(n) { return isFinite(n) ? money.format(n) : ""; }
+
+  // Superficie en pi² à partir du texte des dimensions
+  function parseFraction(t) {
+    var m = t.match(/^(\d+)-(\d+)\/(\d+)$/); if (m) return +m[1] + m[2] / m[3];
+    m = t.match(/^(\d+)\/(\d+)$/); if (m) return m[1] / m[2];
+    return Number(t.replace(",", "."));
+  }
+  function areaSqFt(text) {
+    if (!text || !text.trim()) return null;
+    var t = text.toLowerCase();
+    var tokens = t.match(/\d+-\d+\/\d+|\d+\/\d+|\d+(?:[.,]\d+)?/g);
+    if (!tokens || tokens.length < 2) return null;
+    var nums = tokens.map(parseFraction).filter(function (n) { return isFinite(n) && n > 0; });
+    if (nums.length < 2) return null;
+    if (nums.length > 2) { // on retire l'épaisseur (la plus petite valeur)
+      var minI = nums.indexOf(Math.min.apply(null, nums)); nums.splice(minI, 1);
+      nums = nums.slice(-2);
+    }
+    var a = nums[0], b = nums[1], unit;
+    if (/mm/.test(t) || (a > 400 && b > 400)) unit = "mm";
+    else if (/'|’|pi\b|pieds?|ft/.test(t)) unit = "pi";
+    else if (/"|”|po\b|pouces?|in\b/.test(t)) unit = "po";
+    else unit = (a <= 12 && b <= 12) ? "pi" : "po";
+    var sq = unit === "mm" ? a * b / 92903.04 : unit === "pi" ? a * b : a * b / 144;
+    return { sq: sq, unit: unit };
+  }
+
+  function isMarginOnPrice() { return $("chkMarginMode").checked; }
+  function priceFromCost(c, m) {
+    if (!isFinite(c) || !isFinite(m)) return NaN;
+    if (isMarginOnPrice()) return m >= 100 ? NaN : c / (1 - m / 100);
+    return c * (1 + m / 100);
+  }
+  function marginFromPrice(c, p) {
+    if (!isFinite(c) || !isFinite(p) || p === 0) return NaN;
+    return isMarginOnPrice() ? (p - c) / p * 100 : (c === 0 ? NaN : (p - c) / c * 100);
+  }
+
+  // ---------- Lignes ----------
+  var FIELDS = ["qty", "item", "code", "dim", "cost", "marge", "vm", "vu"];
+
+  function rowTemplate() {
+    var tr = document.createElement("tr");
+    tr.innerHTML =
+      '<td class="num"><input data-f="qty" inputmode="decimal"></td>' +
+      '<td><textarea data-f="item" rows="1"></textarea></td>' +
+      '<td><input data-f="code"></td>' +
+      '<td><input data-f="dim" placeholder="49 x 97"><div class="dimhint"></div></td>' +
+      '<td class="num internal"><input data-f="cost" inputmode="decimal"></td>' +
+      '<td class="num internal"><input data-f="marge" inputmode="decimal"></td>' +
+      '<td class="num calc"><input data-f="vm" inputmode="decimal"></td>' +
+      '<td class="num calc"><input data-f="vu" inputmode="decimal"></td>' +
+      '<td class="num tot"><input data-f="tot" readonly tabindex="-1"></td>' +
+      '<td class="act">' +
+        '<button type="button" data-a="up" title="Monter">▲</button>' +
+        '<button type="button" data-a="down" title="Descendre">▼</button>' +
+        '<button type="button" data-a="dup" title="Dupliquer">⧉</button>' +
+        '<button type="button" data-a="del" title="Supprimer">✕</button>' +
+      '</td>';
+    return tr;
+  }
+  function q(tr, f) { return tr.querySelector('[data-f="' + f + '"]'); }
+
+  function addRow(data, after) {
+    var tr = rowTemplate();
+    data = data || {};
+    FIELDS.forEach(function (f) { if (data[f] != null) q(tr, f).value = data[f]; });
+    if (data.vmManual) q(tr, "vm").classList.add("manual");
+    if (data.vuManual) q(tr, "vu").classList.add("manual");
+    if (after) after.after(tr); else tbody.appendChild(tr);
+    recalcRow(tr);
+    autosize(q(tr, "item"));
+    return tr;
+  }
+
+  function recalcRow(tr) {
+    var cost = parseNum(q(tr, "cost").value);
+    var marge = parseNum(q(tr, "marge").value);
+    var vmI = q(tr, "vm"), vuI = q(tr, "vu");
+    var vm;
+    if (vmI.classList.contains("manual")) {
+      vm = parseNum(vmI.value);
+    } else {
+      vm = priceFromCost(cost, marge);
+      vmI.value = isFinite(vm) ? num2.format(vm) : "";
+    }
+    var dimText = q(tr, "dim").value;
+    var area = areaSqFt(dimText);
+    var hint = tr.querySelector(".dimhint");
+    hint.textContent = area ? "≈ " + num2.format(area.sq) + " pi² (" + area.unit + ")" : "";
+    var vu;
+    if (vuI.classList.contains("manual")) {
+      vu = parseNum(vuI.value);
+    } else {
+      if (isFinite(vm) && area) vu = vm * area.sq / 1000;
+      else if (isFinite(vm) && !dimText.trim()) vu = vm / 1000;
+      else vu = NaN;
+      vuI.value = isFinite(vu) ? num2.format(vu) : "";
+    }
+    var qty = parseNum(q(tr, "qty").value);
+    var tot = isFinite(qty) && isFinite(vu) ? qty * vu : NaN;
+    q(tr, "tot").value = isFinite(tot) ? num2.format(tot) : "";
+    tr.dataset.total = isFinite(tot) ? tot : 0;
+    var blank = ["qty", "item", "code", "dim", "vm", "vu"].every(function (f) { return !q(tr, f).value.trim(); });
+    tr.classList.toggle("blank", blank);
+  }
+
+  function recalcAll() {
+    Array.prototype.forEach.call(tbody.rows, recalcRow);
+    var sum = 0;
+    Array.prototype.forEach.call(tbody.rows, function (tr) { sum += Number(tr.dataset.total) || 0; });
+    $("grandTotal").textContent = fmtMoney(sum);
+  }
+
+  tbody.addEventListener("input", function (e) {
+    var el = e.target, tr = el.closest("tr"), f = el.dataset.f;
+    if (f === "vm" || f === "vu") {
+      // Saisie manuelle : on fige la valeur ; vide = retour au calcul automatique
+      el.classList.toggle("manual", el.value.trim() !== "");
+      if (f === "vm" && el.value.trim() !== "") {
+        var m = marginFromPrice(parseNum(q(tr, "cost").value), parseNum(el.value));
+        if (isFinite(m)) q(tr, "marge").value = num2.format(m);
+      }
+    }
+    if (f === "cost" || f === "marge") q(tr, "vm").classList.remove("manual");
+    if (el.tagName === "TEXTAREA") autosize(el);
+    recalcAll(); save();
+  });
+  tbody.addEventListener("focusout", function (e) {
+    var el = e.target, f = el.dataset && el.dataset.f;
+    if ((f === "vm" || f === "vu") && el.classList.contains("manual")) {
+      var n = parseNum(el.value); if (isFinite(n)) el.value = num2.format(n);
+    }
+    if (f === "cost") { var c = parseNum(el.value); if (isFinite(c)) el.value = num2.format(c); }
+  });
+  tbody.addEventListener("keydown", function (e) {
+    // Entrée dans la dernière ligne = nouvelle ligne
+    if (e.key === "Enter" && e.target.tagName === "INPUT") {
+      e.preventDefault();
+      var tr = e.target.closest("tr");
+      var next = tr.nextElementSibling || addRow();
+      var f = e.target.dataset.f;
+      (q(next, f) || q(next, "qty")).focus();
+    }
+  });
+  tbody.addEventListener("click", function (e) {
+    var b = e.target.closest("button"); if (!b) return;
+    var tr = b.closest("tr"), a = b.dataset.a;
+    if (a === "del") { tr.remove(); if (!tbody.rows.length) addRow(); }
+    if (a === "dup") addRow(rowData(tr), tr);
+    if (a === "up" && tr.previousElementSibling) tr.previousElementSibling.before(tr);
+    if (a === "down" && tr.nextElementSibling) tr.nextElementSibling.after(tr);
+    recalcAll(); save();
+  });
+
+  function rowData(tr) {
+    var d = {};
+    FIELDS.forEach(function (f) { d[f] = q(tr, f).value; });
+    d.vmManual = q(tr, "vm").classList.contains("manual");
+    d.vuManual = q(tr, "vu").classList.contains("manual");
+    return d;
+  }
+
+  // ---------- Champs d'entête ----------
+  var HEADER = ["quoteNo", "date", "validUntil", "client", "project", "seller", "sellerContact", "company", "extra", "notes"];
+  var SETTINGS = ["seller", "sellerContact", "company"];
+
+  function autosize(t) { if (!t) return; t.style.height = "auto"; t.style.height = t.scrollHeight + 2 + "px"; }
+
+  function collect() {
+    var d = { rows: Array.prototype.map.call(tbody.rows, rowData) };
+    HEADER.forEach(function (k) { d[k] = $(k).value; });
+    d.showTotals = $("chkTotals").checked;
+    d.marginOnPrice = $("chkMarginMode").checked;
+    return d;
+  }
+  function apply(d) {
+    HEADER.forEach(function (k) { if (d[k] != null) $(k).value = d[k]; });
+    if (d.showTotals != null) $("chkTotals").checked = d.showTotals;
+    if (d.marginOnPrice != null) $("chkMarginMode").checked = d.marginOnPrice;
+    tbody.innerHTML = "";
+    (d.rows && d.rows.length ? d.rows : [{}, {}, {}]).forEach(function (r) { addRow(r); });
+    refreshUi();
+  }
+  function refreshUi() {
+    document.body.classList.toggle("hide-totals", !$("chkTotals").checked);
+    $("sigSeller").textContent = $("seller").value;
+    document.querySelectorAll("textarea").forEach(autosize);
+    ["extra", "company", "sellerContact"].forEach(function (k) { $(k).closest(".field, .company").classList.toggle("empty-print", !$(k).value.trim()); });
+    document.querySelectorAll("[data-date-for]").forEach(function (b) {
+      var v = $(b.dataset.dateFor).value, d = v ? new Date(v + "T12:00:00") : null;
+      b.textContent = d ? d.toLocaleDateString("fr-CA", { day: "numeric", month: "long", year: "numeric" }) : "";
+    });
+    ["validUntil", "quoteNo"].forEach(function (k) { $(k).closest(".row").classList.toggle("empty-print", !$(k).value.trim()); });
+    recalcAll();
+  }
+
+  var saveTimer;
+  function save() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(function () {
+      var d = collect();
+      store(DRAFT_KEY, JSON.stringify(d));
+      var s = {}; SETTINGS.forEach(function (k) { s[k] = d[k]; });
+      store(SETTINGS_KEY, JSON.stringify(s));
+    }, 250);
+  }
+
+  document.querySelectorAll(".page > header input, .page > header textarea, .info input, .info textarea, #notes")
+    .forEach(function (el) { el.addEventListener("input", function () { refreshUi(); save(); }); });
+  $("chkTotals").addEventListener("change", function () { refreshUi(); save(); });
+  $("chkMarginMode").addEventListener("change", function () { recalcAll(); save(); });
+  $("btnAdd").addEventListener("click", function () { q(addRow(), "qty").focus(); save(); });
+
+  function today() { var d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); }
+
+  $("btnNew").addEventListener("click", function () {
+    if (!confirm("Effacer la soumission actuelle et en commencer une nouvelle ?\n(Le vendeur, les coordonnées et le logo sont conservés.)")) return;
+    var s = {}; SETTINGS.forEach(function (k) { s[k] = $(k).value; });
+    var keepNotes = $("notes").value;
+    apply(Object.assign({ quoteNo: "", date: today(), validUntil: "", client: "", project: "", extra: "", notes: keepNotes, rows: [] }, s));
+    save();
+  });
+
+  function fileBaseName() {
+    var parts = ["Soumission", $("quoteNo").value, $("client").value, $("project").value]
+      .map(function (s) { return s.trim(); }).filter(Boolean);
+    return parts.join(" - ").replace(/[\\/:*?"<>|]/g, "-");
+  }
+
+  $("btnPdf").addEventListener("click", function () {
+    refreshUi();
+    var old = document.title;
+    document.title = fileBaseName(); // nom de fichier proposé pour le PDF
+    window.print();
+    setTimeout(function () { document.title = old; }, 1000);
+  });
+
+  $("btnSave").addEventListener("click", function () {
+    var blob = new Blob([JSON.stringify(collect(), null, 2)], { type: "application/json" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = fileBaseName() + ".json";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  });
+
+  $("fileOpen").addEventListener("change", function () {
+    var f = this.files[0]; if (!f) return;
+    var r = new FileReader();
+    r.onload = function () {
+      try { apply(JSON.parse(r.result)); save(); }
+      catch (e) { alert("Fichier invalide : " + e.message); }
+    };
+    r.readAsText(f); this.value = "";
+  });
+
+  // ---------- Logo ----------
+  // Ordre : logo importé (mémorisé) → fichier « logo.png » à côté de ce fichier → logo texte
+  var logoImg = $("logoImg");
+  function showLogo(src) {
+    logoImg.onload = function () { logoImg.style.display = "block"; $("wordmark").style.display = "none"; };
+    logoImg.onerror = function () { logoImg.style.display = "none"; $("wordmark").style.display = ""; };
+    logoImg.src = src;
+  }
+  showLogo(load(LOGO_KEY) || "logo.png");
+  $("logoBox").addEventListener("click", function () { $("fileLogo").click(); });
+  $("fileLogo").addEventListener("change", function () {
+    var f = this.files[0]; if (!f) return;
+    var r = new FileReader();
+    r.onload = function () { store(LOGO_KEY, r.result); showLogo(r.result); };
+    r.readAsDataURL(f); this.value = "";
+  });
+
+  // ---------- Démarrage ----------
+  var draft = null, settings = {};
+  try { draft = JSON.parse(load(DRAFT_KEY)); } catch (e) {}
+  try { settings = JSON.parse(load(SETTINGS_KEY)) || {}; } catch (e) {}
+  apply(draft || Object.assign({ date: today() }, settings));
+  if (!$("date").value) $("date").value = today();
+  window.addEventListener("beforeprint", refreshUi);
+})();
+</script>
+</body>
+</html>
