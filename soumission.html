@@ -82,11 +82,11 @@
   td.calc input.manual { font-weight: 600; }
   td.internal input.derived { color: #8a6500; font-weight: 700; }
   td.calc input.manual { color: var(--ink); font-style: italic; }
-  .dimhint { font-size: 10px; color: var(--muted); padding: 0 5px 2px; min-height: 0; }
-  .col-qty { width: 6%; } .col-item { width: 22%; } .col-code { width: 12%; } .col-dim { width: 13%; }
-  .col-cost { width: 10%; } .col-marge { width: 7%; } .col-vm { width: 11%; } .col-vu { width: 10%; }
-  .col-tot { width: 10%; } .col-act { width: 92px; }
-  .hide-totals .col-item { width: 32%; }
+  td.internal input.manual { font-style: italic; }
+  .col-qty { width: 5%; } .col-item { width: 19%; } .col-code { width: 11%; } .col-dim { width: 11%; }
+  .col-sqft { width: 7%; } .col-cost { width: 9%; } .col-marge { width: 7%; } .col-vm { width: 11%; }
+  .col-vu { width: 10%; } .col-tot { width: 10%; } .col-act { width: 92px; }
+  .hide-totals .col-item { width: 29%; }
   td.act { white-space: nowrap; text-align: center; }
   td.act button { border: none; background: none; color: var(--muted); padding: 3px 4px; }
   td.act button:hover { color: var(--danger); }
@@ -125,8 +125,7 @@
   .pv { display: none; }
   body.print-mode { background: #fff; }
   body.print-mode .toolbar, body.print-mode .no-print,
-  body.print-mode td.act, body.print-mode th.col-act, body.print-mode .legend,
-  body.print-mode .dimhint { display: none !important; }
+  body.print-mode td.act, body.print-mode th.col-act, body.print-mode .legend { display: none !important; }
   /* 7,6 po = largeur imprimable d'une feuille Lettre avec les marges ci-dessous */
   body.print-mode .page { width: 7.6in; max-width: none; margin: 0; padding: 0; box-shadow: none;
     border-radius: 0; zoom: var(--fit, 1); }
@@ -205,7 +204,7 @@
     <table class="items" id="items">
       <colgroup>
         <col class="col-qty"><col class="col-item"><col class="col-code"><col class="col-dim">
-        <col class="col-cost internal"><col class="col-marge internal">
+        <col class="col-sqft internal"><col class="col-cost internal"><col class="col-marge internal">
         <col class="col-vm"><col class="col-vu"><col class="col-tot"><col class="col-act">
       </colgroup>
       <thead>
@@ -214,6 +213,7 @@
           <th>Item</th>
           <th>Code de produit</th>
           <th>Dimensions</th>
+          <th class="num internal" title="Pieds carrés par unité : calculés à partir des dimensions, modifiables">Pi² / unité</th>
           <th class="num internal">Coût</th>
           <th class="num internal">Marge %</th>
           <th class="num">Vendant / mille</th>
@@ -227,9 +227,9 @@
   </div>
   <div class="no-print add-row">
     <button id="btnAdd">+ Ajouter une ligne</button>
-    <div class="legend">Les colonnes <b>Coût</b> et <b>Marge</b> (en jaune) ne s'impriment jamais. Vendant / mille = coût ÷ (1 − marge).
-      Vendant / unité = vendant/mille × pi² ÷ 1000 si les dimensions sont reconnues (ex. <i>49 x 97</i>, <i>4' x 8'</i>, <i>2800 x 2070 mm</i>),
-      ou vendant/mille ÷ 1000 si les dimensions sont vides (quincaillerie au mille).
+    <div class="legend">Les colonnes en jaune (<b>Pi²</b>, <b>Coût</b>, <b>Marge</b>) ne s'impriment jamais. Vendant / mille = coût ÷ (1 − marge).
+      <b>Pi² / unité</b> : calculés à partir des dimensions (ex. <i>49 x 97</i>, <i>4' x 8'</i>, <i>2800 x 2070 mm</i>) et modifiables à la main ; effacez-les pour revenir au calcul.
+      Vendant / unité = vendant/mille × pi² ÷ 1000, ou vendant/mille ÷ 1000 si les dimensions sont vides (quincaillerie au mille).
       Vous pouvez aussi entrer directement un vendant : la marge est alors calculée (en brun). Si un vendant / mille est entré, il a priorité sur le vendant / unité.
       Si seul le vendant / unité est entré, aucun prix au mille n'est affiché et la marge est calculée avec le coût comme coût unitaire.
       Effacez un vendant entré à la main pour revenir au calcul automatique.</div>
@@ -309,7 +309,7 @@
   }
 
   // ---------- Lignes ----------
-  var FIELDS = ["qty", "item", "code", "dim", "cost", "marge", "vm", "vu"];
+  var FIELDS = ["qty", "item", "code", "dim", "sqft", "cost", "marge", "vm", "vu"];
 
   function rowTemplate() {
     var tr = document.createElement("tr");
@@ -317,7 +317,8 @@
       '<td class="num"><input data-f="qty" inputmode="decimal"></td>' +
       '<td><textarea data-f="item" rows="1"></textarea></td>' +
       '<td><input data-f="code"></td>' +
-      '<td><input data-f="dim" placeholder="49 x 97"><div class="dimhint"></div></td>' +
+      '<td><input data-f="dim" placeholder="49 x 97"></td>' +
+      '<td class="num internal"><input data-f="sqft" inputmode="decimal"></td>' +
       '<td class="num internal"><input data-f="cost" inputmode="decimal"></td>' +
       '<td class="num internal"><input data-f="marge" inputmode="decimal"></td>' +
       '<td class="num calc"><input data-f="vm" inputmode="decimal"></td>' +
@@ -339,6 +340,7 @@
     FIELDS.forEach(function (f) { if (data[f] != null) q(tr, f).value = data[f]; });
     if (data.vmManual) q(tr, "vm").classList.add("manual");
     if (data.vuManual) q(tr, "vu").classList.add("manual");
+    if (data.sqftManual) q(tr, "sqft").classList.add("manual");
     if (after) after.after(tr); else tbody.appendChild(tr);
     recalcRow(tr);
     autosize(q(tr, "item"));
@@ -356,12 +358,19 @@
     var vmManual = vmI.classList.contains("manual") && vmI.value.trim() !== "";
     var vuManual = vuI.classList.contains("manual") && vuI.value.trim() !== "";
 
+    // Pi² par unité : calculés à partir des dimensions, sauf si entrés à la main
     var dimText = q(tr, "dim").value;
-    var area = areaSqFt(dimText);
-    var hint = tr.querySelector(".dimhint");
-    hint.textContent = area ? "≈ " + num2.format(area.sq) + " pi² (" + area.unit + ")" : "";
-    // Facteur mille → unité (null si dimensions non reconnues)
-    var factor = area ? area.sq / 1000 : (!dimText.trim() ? 1 / 1000 : null);
+    var sqI = q(tr, "sqft"), sq;
+    if (sqI.classList.contains("manual") && sqI.value.trim() !== "") {
+      sq = parseNum(sqI.value);
+    } else {
+      sqI.classList.remove("manual");
+      var area = areaSqFt(dimText);
+      sq = area ? area.sq : NaN;
+      sqI.value = isFinite(sq) ? num2.format(sq) : "";
+    }
+    // Facteur mille → unité (null si pi² inconnus et dimensions non vides)
+    var factor = isFinite(sq) && sq > 0 ? sq / 1000 : (!dimText.trim() ? 1 / 1000 : null);
 
     var vm, priceDriven = false, priceForMargin;
     if (vmManual) {
@@ -404,6 +413,7 @@
 
   tbody.addEventListener("input", function (e) {
     var el = e.target, tr = el.closest("tr"), f = el.dataset.f;
+    if (f === "sqft") el.classList.toggle("manual", el.value.trim() !== "");
     if (f === "vm" || f === "vu") {
       // Saisie manuelle : on fige la valeur ; vide = retour au calcul automatique
       el.classList.toggle("manual", el.value.trim() !== "");
@@ -417,7 +427,7 @@
   });
   tbody.addEventListener("focusout", function (e) {
     var el = e.target, f = el.dataset && el.dataset.f;
-    if ((f === "vm" || f === "vu") && el.classList.contains("manual")) {
+    if ((f === "vm" || f === "vu" || f === "sqft") && el.classList.contains("manual")) {
       var n = parseNum(el.value); if (isFinite(n)) el.value = num2.format(n);
     }
     if (f === "cost") { var c = parseNum(el.value); if (isFinite(c)) el.value = num2.format(c); }
@@ -447,6 +457,7 @@
     FIELDS.forEach(function (f) { d[f] = q(tr, f).value; });
     d.vmManual = q(tr, "vm").classList.contains("manual");
     d.vuManual = q(tr, "vu").classList.contains("manual");
+    d.sqftManual = q(tr, "sqft").classList.contains("manual");
     return d;
   }
 
@@ -481,15 +492,19 @@
   }
 
   var saveTimer;
+  function saveNow() {
+    clearTimeout(saveTimer); saveTimer = null;
+    var d = collect();
+    store(DRAFT_KEY, JSON.stringify(d));
+    var s = {}; SETTINGS.forEach(function (k) { s[k] = d[k]; });
+    store(SETTINGS_KEY, JSON.stringify(s));
+  }
   function save() {
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(function () {
-      var d = collect();
-      store(DRAFT_KEY, JSON.stringify(d));
-      var s = {}; SETTINGS.forEach(function (k) { s[k] = d[k]; });
-      store(SETTINGS_KEY, JSON.stringify(s));
-    }, 250);
+    saveTimer = setTimeout(saveNow, 250);
   }
+  // Sauvegarde immédiate si la page est fermée ou rechargée
+  window.addEventListener("pagehide", function () { if (saveTimer) saveNow(); });
 
   document.querySelectorAll(".page > header input, .page > header textarea, .info input, .info textarea, #notes")
     .forEach(function (el) { el.addEventListener("input", function () { refreshUi(); save(); }); });
