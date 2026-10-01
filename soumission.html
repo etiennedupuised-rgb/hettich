@@ -90,14 +90,14 @@
   td.act { white-space: nowrap; text-align: center; }
   /* Frais ajoutés au coût (carburant, transport, autres) */
   button.fees { display: block; width: 100%; margin-top: 1px; padding: 1px 3px; font-size: 10px; line-height: 1.3;
-    border: 1px dashed #d8b24a; background: transparent; color: #8a6500; border-radius: 4px; white-space: nowrap;
+    border: 1px dashed #d8b24a; background: transparent; color: #8a6500; border-radius: 4px; white-space: normal;
     overflow: hidden; text-overflow: ellipsis; }
   button.fees.on { border-style: solid; background: #f7e3a6; font-weight: 700; }
-  #feePanel { position: absolute; z-index: 20; width: 330px; background: #fff; border: 1px solid var(--line);
+  #feePanel { position: absolute; z-index: 20; width: 450px; max-width: calc(100vw - 16px); background: #fff; border: 1px solid var(--line);
     border-top: 3px solid #c99a1e; border-radius: 6px; box-shadow: 0 8px 24px rgba(0,0,0,.18); padding: 10px 12px; font-size: 13px; }
   #feePanel[hidden] { display: none; }
   #feePanel h3 { margin: 0 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: .6px; color: #8a6500; }
-  #feePanel .fee { display: grid; grid-template-columns: 1fr 80px 64px; gap: 6px; align-items: center; margin-bottom: 6px; }
+  #feePanel .fee { display: grid; grid-template-columns: 1fr 72px 54px 116px; gap: 6px; align-items: center; margin-bottom: 6px; }
   #feePanel input, #feePanel select { border: 1px solid var(--line); background: #fff; font: inherit; padding: 4px 6px; border-radius: 4px; width: 100%; }
   #feePanel input.v { text-align: right; }
   #feePanel .sum { border-top: 1px solid var(--line); margin-top: 8px; padding-top: 6px; display: flex; justify-content: space-between; }
@@ -252,7 +252,7 @@
   </div>
   <div class="no-print add-row">
     <button id="btnAdd">+ Ajouter une ligne</button>
-    <div class="legend">Les colonnes en jaune (<b>Pi²</b>, <b>Coût</b>, <b>Marge</b>) ne s'impriment jamais. Vendant / mille = coût de revient ÷ (1 − marge), où le coût de revient = coût + frais (bouton <b>+ frais</b> sous la marge : surcharge carburant, transport, autres, en $ ou en %).
+    <div class="legend">Les colonnes en jaune (<b>Pi²</b>, <b>Coût</b>, <b>Marge</b>) ne s'impriment jamais. Vendant / mille = coût de revient ÷ (1 − marge), où le coût de revient = coût + frais avant marge (bouton <b>+ frais</b> sous la marge : surcharge carburant, transport, autres, en $ ou en %, chacun avant ou après la marge ; les frais après marge s'ajoutent au prix de vente).
       <b>Pi² / unité</b> : calculés à partir des dimensions (ex. <i>49 x 97</i>, <i>4' x 8'</i>, <i>2800 x 2070 mm</i>) et modifiables à la main ; effacez-les pour revenir au calcul.
       Vendant / unité = vendant/mille × pi² ÷ 1000, ou vendant/mille ÷ 1000 si les dimensions sont vides (quincaillerie au mille).
       Vous pouvez aussi entrer directement un vendant : la marge est alors calculée (en brun). Si un vendant / mille est entré, il a priorité sur le vendant / unité.
@@ -284,13 +284,14 @@
 </div>
 
 <div id="feePanel" class="no-print" hidden>
-  <h3>Frais ajoutés au coût</h3>
-  <div class="fee"><span>Surcharge carburant</span><input class="v" data-k="fuel" inputmode="decimal"><select data-u="fuel"><option>%</option><option>$</option></select></div>
-  <div class="fee"><span>Frais de transport</span><input class="v" data-k="transport" inputmode="decimal"><select data-u="transport"><option>$</option><option>%</option></select></div>
-  <div class="fee"><input data-label="other" placeholder="Autres frais"><input class="v" data-k="other" inputmode="decimal"><select data-u="other"><option>$</option><option>%</option></select></div>
-  <div class="hint">Les montants en $ sont dans la même unité que le coût (au mille ou à l'unité). Les % s'appliquent sur le coût.
-    La marge est ensuite calculée sur ce coût de revient.</div>
-  <div class="sum"><span>Coût de revient</span><b id="feeLanded">—</b></div>
+  <h3>Frais de la ligne</h3>
+  <div class="fee"><span>Surcharge carburant</span><input class="v" data-k="fuel" inputmode="decimal"><select data-u="fuel"><option>%</option><option>$</option></select><select data-w="fuel" title="Appliqué au coût (avant la marge) ou au prix de vente (après la marge)"><option value="avant">Avant marge</option><option value="apres">Après marge</option></select></div>
+  <div class="fee"><span>Frais de transport</span><input class="v" data-k="transport" inputmode="decimal"><select data-u="transport"><option>$</option><option>%</option></select><select data-w="transport" title="Appliqué au coût (avant la marge) ou au prix de vente (après la marge)"><option value="avant">Avant marge</option><option value="apres">Après marge</option></select></div>
+  <div class="fee"><input data-label="other" placeholder="Autres frais"><input class="v" data-k="other" inputmode="decimal"><select data-u="other"><option>$</option><option>%</option></select><select data-w="other" title="Appliqué au coût (avant la marge) ou au prix de vente (après la marge)"><option value="avant">Avant marge</option><option value="apres">Après marge</option></select></div>
+  <div class="hint">Les montants en $ sont dans la même unité que le coût (au mille ou à l'unité).
+    <b>Avant marge</b> : ajouté au coût, la marge s'applique dessus (en % : % du coût).
+    <b>Après marge</b> : ajouté au prix de vente, sans marge (en % : % du prix de vente).</div>
+  <div class="sum"><span>Coût de revient (avant marge)</span><b id="feeLanded">—</b></div>
   <div class="btns" style="margin-top:10px">
     <button type="button" id="feeAll" title="Copier ces frais sur toutes les lignes">Appliquer à toutes les lignes</button>
     <button type="button" id="feeClear">Effacer</button>
@@ -395,34 +396,50 @@
     });
     if (Object.keys(clean).length) tr.dataset.fees = JSON.stringify(clean); else delete tr.dataset.fees;
   }
-  function landedCost(cost, fees) {
-    if (!isFinite(cost)) return NaN;
+  // Somme des frais d'un moment donné : "avant" (sur le coût) ou "apres" (sur le prix de vente)
+  function feeTotals(fees, when) {
     var pct = 0, dol = 0;
     FEE_KEYS.forEach(function (k) {
       var f = fees[k], v = f ? parseNum(f.v) : NaN;
-      if (!isFinite(v)) return;
+      if (!isFinite(v) || (f.w || "avant") !== when) return;
       if (f.u === "%") pct += v; else dol += v;
     });
-    return cost * (1 + pct / 100) + dol;
+    return { pct: pct, dol: dol };
+  }
+  function landedCost(cost, fees) {
+    if (!isFinite(cost)) return NaN;
+    var t = feeTotals(fees, "avant");
+    return cost * (1 + t.pct / 100) + t.dol;
+  }
+  // Prix avec marge -> prix de vente (frais après marge ajoutés), et l'inverse
+  function addAfterFees(price, fees) {
+    if (!isFinite(price)) return NaN;
+    var t = feeTotals(fees, "apres");
+    return price * (1 + t.pct / 100) + t.dol;
+  }
+  function removeAfterFees(price, fees) {
+    if (!isFinite(price)) return NaN;
+    var t = feeTotals(fees, "apres");
+    return (price - t.dol) / (1 + t.pct / 100);
   }
   function feeSummary(fees) {
-    var pct = 0, dol = 0, any = false;
-    FEE_KEYS.forEach(function (k) {
-      var f = fees[k], v = f ? parseNum(f.v) : NaN;
-      if (!isFinite(v) || v === 0) return;
-      any = true; if (f.u === "%") pct += v; else dol += v;
-    });
-    if (!any) return "";
-    var parts = [];
-    if (pct) parts.push(num2.format(pct).replace(/,00$/, "") + " %");
-    if (dol) parts.push(num2.format(dol) + " $");
-    return "+ " + parts.join(" + ");
+    function part(t) {
+      var p = [];
+      if (t.pct) p.push(num2.format(t.pct).replace(/,00$/, "") + " %");
+      if (t.dol) p.push(num2.format(t.dol) + " $");
+      return p.join(" + ");
+    }
+    var av = part(feeTotals(fees, "avant")), ap = part(feeTotals(fees, "apres"));
+    var out = [];
+    if (av) out.push("+ " + av);
+    if (ap) out.push("+ " + ap + " ap.");
+    return out.join(" · ");
   }
   function updateFeeButton(tr) {
     var b = tr.querySelector("button.fees"), sum = feeSummary(getFees(tr));
     b.textContent = sum || "+ frais";
     b.classList.toggle("on", !!sum);
-    b.title = sum ? "Frais ajoutés au coût : " + sum + " (cliquer pour modifier)" : "Surcharge carburant, transport, autres frais";
+    b.title = sum ? "Frais (ap. = après marge) : " + sum + " (cliquer pour modifier)" : "Surcharge carburant, transport, autres frais";
   }
 
   function addRow(data, after) {
@@ -445,7 +462,8 @@
   //   3. Sinon                  → vendant calculé à partir du coût et de la marge
   function recalcRow(tr) {
     // Coût de revient = coût + frais (carburant, transport, autres)
-    var cost = landedCost(parseNum(q(tr, "cost").value), getFees(tr));
+    var fees = getFees(tr);
+    var cost = landedCost(parseNum(q(tr, "cost").value), fees);
     tr.dataset.landed = isFinite(cost) ? cost : "";
     updateFeeButton(tr);
     var margeI = q(tr, "marge");
@@ -469,13 +487,13 @@
 
     var vm, priceDriven = false, priceForMargin;
     if (vmManual) {
-      vm = parseNum(vmI.value); priceDriven = true; priceForMargin = vm;
+      vm = parseNum(vmI.value); priceDriven = true; priceForMargin = removeAfterFees(vm, fees);
     } else if (vuManual) {
       // Item vendu à l'unité : pas de prix au mille, le coût est un coût unitaire
       vm = NaN; vmI.value = "";
-      priceDriven = true; priceForMargin = parseNum(vuI.value);
+      priceDriven = true; priceForMargin = removeAfterFees(parseNum(vuI.value), fees);
     } else {
-      vm = priceFromCost(cost, parseNum(margeI.value));
+      vm = addAfterFees(priceFromCost(cost, parseNum(margeI.value)), fees);
       vmI.value = isFinite(vm) ? num2.format(vm) : "";
     }
     if (priceDriven) {
@@ -572,6 +590,7 @@
       feePanel.querySelector('[data-k="' + k + '"]').value = f.v || "";
       var sel = feePanel.querySelector('[data-u="' + k + '"]');
       sel.value = f.u || sel.options[0].value;
+      feePanel.querySelector('[data-w="' + k + '"]').value = f.w || "avant";
     });
     feePanel.querySelector('[data-label="other"]').value = (fees.other && fees.other.label) || "";
     feePanel.hidden = false;
@@ -587,7 +606,8 @@
     var fees = {};
     FEE_KEYS.forEach(function (k) {
       fees[k] = { v: feePanel.querySelector('[data-k="' + k + '"]').value,
-                  u: feePanel.querySelector('[data-u="' + k + '"]').value };
+                  u: feePanel.querySelector('[data-u="' + k + '"]').value,
+                  w: feePanel.querySelector('[data-w="' + k + '"]').value };
     });
     fees.other.label = feePanel.querySelector('[data-label="other"]').value;
     return fees;
