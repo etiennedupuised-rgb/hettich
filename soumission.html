@@ -80,6 +80,7 @@
   table.items td textarea { min-height: 1.9em; padding: 3px 5px; }
   td.calc input { color: var(--dark); font-weight: 700; }
   td.calc input.manual { font-weight: 600; }
+  td.internal input.derived { color: #8a6500; font-weight: 700; }
   td.calc input.manual { color: var(--ink); font-style: italic; }
   .dimhint { font-size: 10px; color: var(--muted); padding: 0 5px 2px; min-height: 0; }
   .col-qty { width: 6%; } .col-item { width: 22%; } .col-code { width: 12%; } .col-dim { width: 13%; }
@@ -228,7 +229,9 @@
     <button id="btnAdd">+ Ajouter une ligne</button>
     <div class="legend">Les colonnes <b>Coût</b> et <b>Marge</b> (en jaune) ne s'impriment jamais. Vendant / mille = coût ÷ (1 − marge).
       Vendant / unité = vendant/mille × pi² ÷ 1000 si les dimensions sont reconnues (ex. <i>49 x 97</i>, <i>4' x 8'</i>, <i>2800 x 2070 mm</i>),
-      ou vendant/mille ÷ 1000 si les dimensions sont vides (quincaillerie au mille). Toute valeur calculée peut être modifiée à la main ; effacez-la pour revenir au calcul automatique.</div>
+      ou vendant/mille ÷ 1000 si les dimensions sont vides (quincaillerie au mille).
+      Vous pouvez aussi entrer directement un vendant : la marge est alors calculée (en brun). Si un vendant / mille est entré, il a priorité sur le vendant / unité.
+      Effacez un vendant entré à la main pour revenir au calcul automatique.</div>
   </div>
   <div class="grand-total"><div><span>Total (avant taxes)</span><span id="grandTotal">0,00 $</span></div></div>
 
@@ -341,28 +344,45 @@
     return tr;
   }
 
+  // Priorité des prix saisis à la main :
+  //   1. Vendant / mille saisi  → la marge est calculée à partir de celui-ci
+  //   2. Vendant / unité saisi  → ramené au mille (selon les pi²), puis marge calculée
+  //   3. Sinon                  → vendant calculé à partir du coût et de la marge
   function recalcRow(tr) {
     var cost = parseNum(q(tr, "cost").value);
-    var marge = parseNum(q(tr, "marge").value);
+    var margeI = q(tr, "marge");
     var vmI = q(tr, "vm"), vuI = q(tr, "vu");
-    var vm;
-    if (vmI.classList.contains("manual")) {
-      vm = parseNum(vmI.value);
-    } else {
-      vm = priceFromCost(cost, marge);
-      vmI.value = isFinite(vm) ? num2.format(vm) : "";
-    }
+    var vmManual = vmI.classList.contains("manual") && vmI.value.trim() !== "";
+    var vuManual = vuI.classList.contains("manual") && vuI.value.trim() !== "";
+
     var dimText = q(tr, "dim").value;
     var area = areaSqFt(dimText);
     var hint = tr.querySelector(".dimhint");
     hint.textContent = area ? "≈ " + num2.format(area.sq) + " pi² (" + area.unit + ")" : "";
+    // Facteur mille → unité (null si dimensions non reconnues)
+    var factor = area ? area.sq / 1000 : (!dimText.trim() ? 1 / 1000 : null);
+
+    var vm, priceDriven = false;
+    if (vmManual) {
+      vm = parseNum(vmI.value); priceDriven = true;
+    } else if (vuManual && factor) {
+      vm = parseNum(vuI.value) / factor; priceDriven = true;
+      vmI.value = isFinite(vm) ? num2.format(vm) : "";
+    } else {
+      vm = priceFromCost(cost, parseNum(margeI.value));
+      vmI.value = isFinite(vm) ? num2.format(vm) : "";
+    }
+    if (priceDriven) {
+      var m = marginFromPrice(cost, vm);
+      margeI.value = isFinite(m) ? num2.format(m) : "";
+    }
+    margeI.classList.toggle("derived", priceDriven);
+
     var vu;
-    if (vuI.classList.contains("manual")) {
+    if (vuManual) {
       vu = parseNum(vuI.value);
     } else {
-      if (isFinite(vm) && area) vu = vm * area.sq / 1000;
-      else if (isFinite(vm) && !dimText.trim()) vu = vm / 1000;
-      else vu = NaN;
+      vu = isFinite(vm) && factor ? vm * factor : NaN;
       vuI.value = isFinite(vu) ? num2.format(vu) : "";
     }
     var qty = parseNum(q(tr, "qty").value);
@@ -385,12 +405,11 @@
     if (f === "vm" || f === "vu") {
       // Saisie manuelle : on fige la valeur ; vide = retour au calcul automatique
       el.classList.toggle("manual", el.value.trim() !== "");
-      if (f === "vm" && el.value.trim() !== "") {
-        var m = marginFromPrice(parseNum(q(tr, "cost").value), parseNum(el.value));
-        if (isFinite(m)) q(tr, "marge").value = num2.format(m);
-      }
+      // Un vendant / mille saisi a priorité : le vendant / unité redevient calculé
+      if (f === "vm" && el.value.trim() !== "") q(tr, "vu").classList.remove("manual");
     }
-    if (f === "cost" || f === "marge") q(tr, "vm").classList.remove("manual");
+    // Saisir une marge = c'est elle qui fixe le prix
+    if (f === "marge") { q(tr, "vm").classList.remove("manual"); q(tr, "vu").classList.remove("manual"); }
     if (el.tagName === "TEXTAREA") autosize(el);
     recalcAll(); save();
   });
