@@ -88,14 +88,39 @@
   .col-vu { width: 10%; } .col-tot { width: 10%; } .col-act { width: 92px; }
   .hide-totals .col-item { width: 29%; }
   td.act { white-space: nowrap; text-align: center; }
+  /* Frais ajoutés au coût (carburant, transport, autres) */
+  button.fees { display: block; width: 100%; margin-top: 1px; padding: 1px 3px; font-size: 10px; line-height: 1.3;
+    border: 1px dashed #d8b24a; background: transparent; color: #8a6500; border-radius: 4px; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; }
+  button.fees.on { border-style: solid; background: #f7e3a6; font-weight: 700; }
+  #feePanel { position: absolute; z-index: 20; width: 330px; background: #fff; border: 1px solid var(--line);
+    border-top: 3px solid #c99a1e; border-radius: 6px; box-shadow: 0 8px 24px rgba(0,0,0,.18); padding: 10px 12px; font-size: 13px; }
+  #feePanel[hidden] { display: none; }
+  #feePanel h3 { margin: 0 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: .6px; color: #8a6500; }
+  #feePanel .fee { display: grid; grid-template-columns: 1fr 80px 64px; gap: 6px; align-items: center; margin-bottom: 6px; }
+  #feePanel input, #feePanel select { border: 1px solid var(--line); background: #fff; font: inherit; padding: 4px 6px; border-radius: 4px; width: 100%; }
+  #feePanel input.v { text-align: right; }
+  #feePanel .sum { border-top: 1px solid var(--line); margin-top: 8px; padding-top: 6px; display: flex; justify-content: space-between; }
+  #feePanel .hint { color: var(--muted); font-size: 11px; margin: 6px 0 8px; }
+  #feePanel .btns { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
+  #feePanel .btns button { padding: 5px 9px; font-size: 12px; }
   td.act button { border: none; background: none; color: var(--muted); padding: 3px 4px; }
   td.act button:hover { color: var(--danger); }
   .hide-totals .col-tot, .hide-totals td.tot { display: none; }
   .add-row { margin-top: 8px; }
+  /* Sommaire : sous-total, frais à la commande, total */
   .grand-total { display: flex; justify-content: flex-end; margin-top: 10px; }
-  .grand-total div { min-width: 260px; display: flex; justify-content: space-between; gap: 16px;
-    border-top: 2px solid var(--brand); padding-top: 6px; font-weight: 700; font-size: 15px; }
-  .hide-totals .grand-total { display: none; }
+  .grand-total .box { min-width: 300px; }
+  .grand-total .srow { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 3px 0; font-size: 14px; }
+  .grand-total .srow .lbl { flex: 1; }
+  .grand-total .srow b { min-width: 90px; text-align: right; }
+  .grand-total .feein { display: inline-flex; gap: 4px; }
+  .grand-total .feein input { width: 70px; text-align: right; border-color: var(--line); }
+  .grand-total .feein select { font: inherit; border: 1px solid var(--line); border-radius: 4px; background: #fff; padding: 2px 4px; }
+  .grand-total .srow.total { border-top: 2px solid var(--brand); margin-top: 4px; padding-top: 6px; font-weight: 700; font-size: 15px; }
+  .grand-total .srow.sub { color: var(--muted); }
+  body.print-mode.hide-totals .grand-total:not(.has-fees) { display: none; }
+  body.print-mode .grand-total .srow.zero, body.print-mode .grand-total:not(.has-fees) .srow.sub { display: none; }
   .legend { font-size: 11px; color: var(--muted); margin-top: 6px; }
   .legend b { color: #8a6500; }
 
@@ -227,14 +252,23 @@
   </div>
   <div class="no-print add-row">
     <button id="btnAdd">+ Ajouter une ligne</button>
-    <div class="legend">Les colonnes en jaune (<b>Pi²</b>, <b>Coût</b>, <b>Marge</b>) ne s'impriment jamais. Vendant / mille = coût ÷ (1 − marge).
+    <div class="legend">Les colonnes en jaune (<b>Pi²</b>, <b>Coût</b>, <b>Marge</b>) ne s'impriment jamais. Vendant / mille = coût de revient ÷ (1 − marge), où le coût de revient = coût + frais (bouton <b>+ frais</b> sous la marge : surcharge carburant, transport, autres, en $ ou en %).
       <b>Pi² / unité</b> : calculés à partir des dimensions (ex. <i>49 x 97</i>, <i>4' x 8'</i>, <i>2800 x 2070 mm</i>) et modifiables à la main ; effacez-les pour revenir au calcul.
       Vendant / unité = vendant/mille × pi² ÷ 1000, ou vendant/mille ÷ 1000 si les dimensions sont vides (quincaillerie au mille).
       Vous pouvez aussi entrer directement un vendant : la marge est alors calculée (en brun). Si un vendant / mille est entré, il a priorité sur le vendant / unité.
       Si seul le vendant / unité est entré, aucun prix au mille n'est affiché et la marge est calculée avec le coût comme coût unitaire.
       Effacez un vendant entré à la main pour revenir au calcul automatique.</div>
   </div>
-  <div class="grand-total"><div><span>Total (avant taxes)</span><span id="grandTotal">0,00 $</span></div></div>
+  <div class="grand-total" id="summary"><div class="box">
+    <div class="srow sub"><span class="lbl">Sous-total</span><b id="subTotal">0,00 $</b></div>
+    <div class="srow" id="rowHandling"><span class="lbl">Frais de manutention <span class="pct"></span></span>
+      <span class="feein no-print"><input id="handlingV" inputmode="decimal" placeholder="0"><select id="handlingU"><option>$</option><option>%</option></select></span>
+      <b id="handlingAmt"></b></div>
+    <div class="srow" id="rowFuel"><span class="lbl">Surcharge carburant <span class="pct"></span></span>
+      <span class="feein no-print"><input id="fuelV" inputmode="decimal" placeholder="0"><select id="fuelU"><option>%</option><option>$</option></select></span>
+      <b id="fuelAmt"></b></div>
+    <div class="srow total"><span class="lbl">Total (avant taxes)</span><b id="grandTotal">0,00 $</b></div>
+  </div></div>
 
   <section class="notes">
     <h2>Notes importantes</h2>
@@ -247,6 +281,21 @@
     <div class="line">Préparé par : <span id="sigSeller"></span></div>
     <div class="line">Acceptation du client (signature / date)</div>
   </footer>
+</div>
+
+<div id="feePanel" class="no-print" hidden>
+  <h3>Frais ajoutés au coût</h3>
+  <div class="fee"><span>Surcharge carburant</span><input class="v" data-k="fuel" inputmode="decimal"><select data-u="fuel"><option>%</option><option>$</option></select></div>
+  <div class="fee"><span>Frais de transport</span><input class="v" data-k="transport" inputmode="decimal"><select data-u="transport"><option>$</option><option>%</option></select></div>
+  <div class="fee"><input data-label="other" placeholder="Autres frais"><input class="v" data-k="other" inputmode="decimal"><select data-u="other"><option>$</option><option>%</option></select></div>
+  <div class="hint">Les montants en $ sont dans la même unité que le coût (au mille ou à l'unité). Les % s'appliquent sur le coût.
+    La marge est ensuite calculée sur ce coût de revient.</div>
+  <div class="sum"><span>Coût de revient</span><b id="feeLanded">—</b></div>
+  <div class="btns" style="margin-top:10px">
+    <button type="button" id="feeAll" title="Copier ces frais sur toutes les lignes">Appliquer à toutes les lignes</button>
+    <button type="button" id="feeClear">Effacer</button>
+    <button type="button" class="primary" id="feeClose">OK</button>
+  </div>
 </div>
 
 <script>
@@ -320,7 +369,8 @@
       '<td><input data-f="dim" placeholder="49 x 97"></td>' +
       '<td class="num internal"><input data-f="sqft" inputmode="decimal"></td>' +
       '<td class="num internal"><input data-f="cost" inputmode="decimal"></td>' +
-      '<td class="num internal"><input data-f="marge" inputmode="decimal"></td>' +
+      '<td class="num internal"><input data-f="marge" inputmode="decimal">' +
+        '<button type="button" class="fees" data-a="fees" title="Surcharge carburant, transport, autres frais">+ frais</button></td>' +
       '<td class="num calc"><input data-f="vm" inputmode="decimal"></td>' +
       '<td class="num calc"><input data-f="vu" inputmode="decimal"></td>' +
       '<td class="num tot"><input data-f="tot" readonly tabindex="-1"></td>' +
@@ -334,6 +384,47 @@
   }
   function q(tr, f) { return tr.querySelector('[data-f="' + f + '"]'); }
 
+  // ---------- Frais par ligne ----------
+  var FEE_KEYS = ["fuel", "transport", "other"];
+  function getFees(tr) { try { return JSON.parse(tr.dataset.fees || "{}"); } catch (e) { return {}; } }
+  function setFees(tr, fees) {
+    var clean = {};
+    FEE_KEYS.forEach(function (k) {
+      var f = fees && fees[k];
+      if (f && (isFinite(parseNum(f.v)) || (f.label || "").trim())) clean[k] = f;
+    });
+    if (Object.keys(clean).length) tr.dataset.fees = JSON.stringify(clean); else delete tr.dataset.fees;
+  }
+  function landedCost(cost, fees) {
+    if (!isFinite(cost)) return NaN;
+    var pct = 0, dol = 0;
+    FEE_KEYS.forEach(function (k) {
+      var f = fees[k], v = f ? parseNum(f.v) : NaN;
+      if (!isFinite(v)) return;
+      if (f.u === "%") pct += v; else dol += v;
+    });
+    return cost * (1 + pct / 100) + dol;
+  }
+  function feeSummary(fees) {
+    var pct = 0, dol = 0, any = false;
+    FEE_KEYS.forEach(function (k) {
+      var f = fees[k], v = f ? parseNum(f.v) : NaN;
+      if (!isFinite(v) || v === 0) return;
+      any = true; if (f.u === "%") pct += v; else dol += v;
+    });
+    if (!any) return "";
+    var parts = [];
+    if (pct) parts.push(num2.format(pct).replace(/,00$/, "") + " %");
+    if (dol) parts.push(num2.format(dol) + " $");
+    return "+ " + parts.join(" + ");
+  }
+  function updateFeeButton(tr) {
+    var b = tr.querySelector("button.fees"), sum = feeSummary(getFees(tr));
+    b.textContent = sum || "+ frais";
+    b.classList.toggle("on", !!sum);
+    b.title = sum ? "Frais ajoutés au coût : " + sum + " (cliquer pour modifier)" : "Surcharge carburant, transport, autres frais";
+  }
+
   function addRow(data, after) {
     var tr = rowTemplate();
     data = data || {};
@@ -341,6 +432,7 @@
     if (data.vmManual) q(tr, "vm").classList.add("manual");
     if (data.vuManual) q(tr, "vu").classList.add("manual");
     if (data.sqftManual) q(tr, "sqft").classList.add("manual");
+    if (data.fees) setFees(tr, data.fees);
     if (after) after.after(tr); else tbody.appendChild(tr);
     recalcRow(tr);
     autosize(q(tr, "item"));
@@ -352,7 +444,10 @@
   //   2. Vendant / unité saisi  → marge calculée sur le coût unitaire ; aucun prix au mille
   //   3. Sinon                  → vendant calculé à partir du coût et de la marge
   function recalcRow(tr) {
-    var cost = parseNum(q(tr, "cost").value);
+    // Coût de revient = coût + frais (carburant, transport, autres)
+    var cost = landedCost(parseNum(q(tr, "cost").value), getFees(tr));
+    tr.dataset.landed = isFinite(cost) ? cost : "";
+    updateFeeButton(tr);
     var margeI = q(tr, "marge");
     var vmI = q(tr, "vm"), vuI = q(tr, "vu");
     var vmManual = vmI.classList.contains("manual") && vmI.value.trim() !== "";
@@ -408,7 +503,21 @@
     Array.prototype.forEach.call(tbody.rows, recalcRow);
     var sum = 0;
     Array.prototype.forEach.call(tbody.rows, function (tr) { sum += Number(tr.dataset.total) || 0; });
-    $("grandTotal").textContent = fmtMoney(sum);
+    // Frais sur la commande totale (visibles par le client)
+    var fees = 0, hasFees = false;
+    [["handling", "rowHandling"], ["fuel", "rowFuel"]].forEach(function (x) {
+      var v = parseNum($(x[0] + "V").value), pct = $(x[0] + "U").value === "%";
+      var amt = isFinite(v) && v !== 0 ? (pct ? sum * v / 100 : v) : 0;
+      var row = $(x[1]);
+      row.classList.toggle("zero", !amt);
+      row.querySelector(".pct").textContent = amt && pct ? "(" + num2.format(v).replace(/,00$/, "") + " %)" : "";
+      $(x[0] + "Amt").textContent = amt ? fmtMoney(amt) : "";
+      if (amt) hasFees = true;
+      fees += amt;
+    });
+    $("summary").classList.toggle("has-fees", hasFees);
+    $("subTotal").textContent = fmtMoney(sum);
+    $("grandTotal").textContent = fmtMoney(sum + fees);
   }
 
   tbody.addEventListener("input", function (e) {
@@ -445,11 +554,68 @@
   tbody.addEventListener("click", function (e) {
     var b = e.target.closest("button"); if (!b) return;
     var tr = b.closest("tr"), a = b.dataset.a;
-    if (a === "del") { tr.remove(); if (!tbody.rows.length) addRow(); }
+    if (a === "fees") { openFees(tr, b); return; }
+    if (a === "del") { if (feeRow === tr) closeFees(); tr.remove(); if (!tbody.rows.length) addRow(); }
     if (a === "dup") addRow(rowData(tr), tr);
     if (a === "up" && tr.previousElementSibling) tr.previousElementSibling.before(tr);
     if (a === "down" && tr.nextElementSibling) tr.nextElementSibling.after(tr);
     recalcAll(); save();
+  });
+
+  var feePanel = $("feePanel"), feeRow = null;
+  function openFees(tr, btn) {
+    if (feeRow === tr && !feePanel.hidden) { closeFees(); return; }
+    feeRow = tr;
+    var fees = getFees(tr);
+    FEE_KEYS.forEach(function (k) {
+      var f = fees[k] || {};
+      feePanel.querySelector('[data-k="' + k + '"]').value = f.v || "";
+      var sel = feePanel.querySelector('[data-u="' + k + '"]');
+      sel.value = f.u || sel.options[0].value;
+    });
+    feePanel.querySelector('[data-label="other"]').value = (fees.other && fees.other.label) || "";
+    feePanel.hidden = false;
+    var r = btn.getBoundingClientRect();
+    var left = Math.min(window.scrollX + r.left, window.scrollX + document.documentElement.clientWidth - feePanel.offsetWidth - 8);
+    feePanel.style.left = Math.max(8, left) + "px";
+    feePanel.style.top = (window.scrollY + r.bottom + 4) + "px";
+    updateFeeLanded();
+    feePanel.querySelector('[data-k="fuel"]').focus();
+  }
+  function closeFees() { feePanel.hidden = true; feeRow = null; }
+  function readFeePanel() {
+    var fees = {};
+    FEE_KEYS.forEach(function (k) {
+      fees[k] = { v: feePanel.querySelector('[data-k="' + k + '"]').value,
+                  u: feePanel.querySelector('[data-u="' + k + '"]').value };
+    });
+    fees.other.label = feePanel.querySelector('[data-label="other"]').value;
+    return fees;
+  }
+  function updateFeeLanded() {
+    var v = feeRow && feeRow.dataset.landed !== "" ? Number(feeRow.dataset.landed) : NaN;
+    $("feeLanded").textContent = isFinite(v) ? num2.format(v) : "— (entrer un coût)";
+  }
+  function onFeeChange() {
+    if (!feeRow) return;
+    setFees(feeRow, readFeePanel());
+    recalcAll(); updateFeeLanded(); save();
+  }
+  feePanel.addEventListener("input", onFeeChange);
+  feePanel.addEventListener("change", onFeeChange);
+  $("feeClose").addEventListener("click", closeFees);
+  $("feeClear").addEventListener("click", function () {
+    feePanel.querySelectorAll("input").forEach(function (i) { i.value = ""; });
+    onFeeChange();
+  });
+  $("feeAll").addEventListener("click", function () {
+    var fees = readFeePanel();
+    Array.prototype.forEach.call(tbody.rows, function (tr) { setFees(tr, fees); });
+    recalcAll(); updateFeeLanded(); save();
+  });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !feePanel.hidden) closeFees(); });
+  document.addEventListener("mousedown", function (e) {
+    if (!feePanel.hidden && !feePanel.contains(e.target) && !e.target.closest("button.fees")) closeFees();
   });
 
   function rowData(tr) {
@@ -458,11 +624,13 @@
     d.vmManual = q(tr, "vm").classList.contains("manual");
     d.vuManual = q(tr, "vu").classList.contains("manual");
     d.sqftManual = q(tr, "sqft").classList.contains("manual");
+    var fees = getFees(tr); if (Object.keys(fees).length) d.fees = fees;
     return d;
   }
 
   // ---------- Champs d'entête ----------
-  var HEADER = ["quoteNo", "date", "validUntil", "client", "project", "seller", "sellerContact", "company", "extra", "notes"];
+  var HEADER = ["quoteNo", "date", "validUntil", "client", "project", "seller", "sellerContact", "company", "extra", "notes",
+    "handlingV", "handlingU", "fuelV", "fuelU"];
   var SETTINGS = ["seller", "sellerContact", "company"];
 
   function autosize(t) { if (!t) return; t.style.height = "auto"; t.style.height = t.scrollHeight + 2 + "px"; }
@@ -478,6 +646,7 @@
     HEADER.forEach(function (k) { if (d[k] != null) $(k).value = d[k]; });
     if (d.showTotals != null) $("chkTotals").checked = d.showTotals;
     if (d.marginOnPrice != null) $("chkMarginMode").checked = d.marginOnPrice;
+    closeFees();
     tbody.innerHTML = "";
     (d.rows && d.rows.length ? d.rows : [{}, {}, {}]).forEach(function (r) { addRow(r); });
     refreshUi();
@@ -508,6 +677,10 @@
 
   document.querySelectorAll(".page > header input, .page > header textarea, .info input, .info textarea, #notes")
     .forEach(function (el) { el.addEventListener("input", function () { refreshUi(); save(); }); });
+  ["handlingV", "handlingU", "fuelV", "fuelU"].forEach(function (k) {
+    $(k).addEventListener("input", function () { recalcAll(); save(); });
+    $(k).addEventListener("change", function () { recalcAll(); save(); });
+  });
   $("chkTotals").addEventListener("change", function () { refreshUi(); save(); });
   $("chkMarginMode").addEventListener("change", function () { recalcAll(); save(); });
   $("btnAdd").addEventListener("click", function () { q(addRow(), "qty").focus(); save(); });
@@ -518,7 +691,7 @@
     if (!confirm("Effacer la soumission actuelle et en commencer une nouvelle ?\n(Le vendeur et les coordonnées sont conservés.)")) return;
     var s = {}; SETTINGS.forEach(function (k) { s[k] = $(k).value; });
     var keepNotes = $("notes").value;
-    apply(Object.assign({ quoteNo: "", date: today(), validUntil: "", client: "", project: "", extra: "", notes: keepNotes, rows: [] }, s));
+    apply(Object.assign({ quoteNo: "", date: today(), validUntil: "", client: "", project: "", extra: "", notes: keepNotes, handlingV: "", fuelV: "", rows: [] }, s));
     save();
   });
 
