@@ -231,6 +231,7 @@
       Vendant / unité = vendant/mille × pi² ÷ 1000 si les dimensions sont reconnues (ex. <i>49 x 97</i>, <i>4' x 8'</i>, <i>2800 x 2070 mm</i>),
       ou vendant/mille ÷ 1000 si les dimensions sont vides (quincaillerie au mille).
       Vous pouvez aussi entrer directement un vendant : la marge est alors calculée (en brun). Si un vendant / mille est entré, il a priorité sur le vendant / unité.
+      Si seul le vendant / unité est entré, aucun prix au mille n'est affiché et la marge est calculée avec le coût comme coût unitaire.
       Effacez un vendant entré à la main pour revenir au calcul automatique.</div>
   </div>
   <div class="grand-total"><div><span>Total (avant taxes)</span><span id="grandTotal">0,00 $</span></div></div>
@@ -346,7 +347,7 @@
 
   // Priorité des prix saisis à la main :
   //   1. Vendant / mille saisi  → la marge est calculée à partir de celui-ci
-  //   2. Vendant / unité saisi  → ramené au mille (selon les pi²), puis marge calculée
+  //   2. Vendant / unité saisi  → marge calculée sur le coût unitaire ; aucun prix au mille
   //   3. Sinon                  → vendant calculé à partir du coût et de la marge
   function recalcRow(tr) {
     var cost = parseNum(q(tr, "cost").value);
@@ -362,18 +363,19 @@
     // Facteur mille → unité (null si dimensions non reconnues)
     var factor = area ? area.sq / 1000 : (!dimText.trim() ? 1 / 1000 : null);
 
-    var vm, priceDriven = false;
+    var vm, priceDriven = false, priceForMargin;
     if (vmManual) {
-      vm = parseNum(vmI.value); priceDriven = true;
-    } else if (vuManual && factor) {
-      vm = parseNum(vuI.value) / factor; priceDriven = true;
-      vmI.value = isFinite(vm) ? num2.format(vm) : "";
+      vm = parseNum(vmI.value); priceDriven = true; priceForMargin = vm;
+    } else if (vuManual) {
+      // Item vendu à l'unité : pas de prix au mille, le coût est un coût unitaire
+      vm = NaN; vmI.value = "";
+      priceDriven = true; priceForMargin = parseNum(vuI.value);
     } else {
       vm = priceFromCost(cost, parseNum(margeI.value));
       vmI.value = isFinite(vm) ? num2.format(vm) : "";
     }
     if (priceDriven) {
-      var m = marginFromPrice(cost, vm);
+      var m = marginFromPrice(cost, priceForMargin);
       margeI.value = isFinite(m) ? num2.format(m) : "";
     }
     margeI.classList.toggle("derived", priceDriven);
