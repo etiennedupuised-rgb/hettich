@@ -61,6 +61,8 @@
   .doc-title .row { display: flex; justify-content: flex-end; align-items: center; gap: 6px; }
   .doc-title .row span { color: var(--muted); font-size: 12px; white-space: nowrap; }
   .doc-title input { width: 150px; text-align: right; }
+  /* N° de soumission : la case s'élargit selon la longueur du numéro */
+  .doc-title input#quoteNo { min-width: 150px; max-width: 100%; }
 
   .info { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 24px; margin: 18px 0 8px; }
   .field label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .8px;
@@ -204,7 +206,7 @@
   body.print-mode .field .pv { font-size: 15px; font-weight: 600; }
   body.print-mode .field.full .pv, body.print-mode .notes .pv { font-size: 13px; font-weight: 400; }
   body.print-mode .company .pv { font-size: 12px; color: var(--muted); margin-top: 6px; }
-  body.print-mode .doc-title .pv { display: inline-block; min-width: 120px; text-align: right; font-weight: 700; }
+  body.print-mode .doc-title .pv { display: inline-block; min-width: 120px; text-align: right; font-weight: 700; white-space: nowrap; }
   body.print-mode table.items td { padding: 3px 4px; }
   body.print-mode td.num .pv { text-align: right; }
   body.print-mode td.calc .pv { font-weight: 700; }
@@ -775,7 +777,20 @@
     (d.rows && d.rows.length ? d.rows : [{}, {}, {}]).forEach(function (r) { addRow(r); });
     refreshUi();
   }
+  // Ajuste la largeur de la case N° de soumission à son contenu
+  var measureCtx = null;
+  function fitQuoteNo() {
+    var el = $("quoteNo");
+    try {
+      measureCtx = measureCtx || document.createElement("canvas").getContext("2d");
+      var cs = getComputedStyle(el);
+      measureCtx.font = cs.fontWeight + " " + cs.fontSize + " " + cs.fontFamily;
+      var w = measureCtx.measureText(el.value || el.placeholder).width;
+      el.style.width = Math.ceil(w + parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight) + 6) + "px";
+    } catch (e) { el.size = Math.max(12, el.value.length + 2); el.style.width = "auto"; }
+  }
   function refreshUi() {
+    fitQuoteNo();
     document.body.classList.toggle("hide-totals", !$("chkTotals").checked);
     $("sigSeller").textContent = $("seller").value;
     document.querySelectorAll("textarea").forEach(autosize);
