@@ -178,7 +178,7 @@
   body.print-mode .page { width: 7.6in; max-width: none; margin: 0; padding: 0; box-shadow: none;
     border-radius: 0; zoom: var(--fit, 1); }
   /* Coût et marge jamais visibles par le client */
-  body.print-mode .internal { display: none !important; }
+  body.print-mode:not(.print-internal) .internal { display: none !important; }
   body.print-mode tr.blank, body.print-mode .empty-print { display: none !important; }
   body.print-mode .page input, body.print-mode .page textarea { display: none !important; }
   body.print-mode .pv { display: block; white-space: pre-wrap; overflow-wrap: anywhere; padding: 3px 0; min-height: 1.4em; }
@@ -203,7 +203,19 @@
   body.print-mode .col-tot { width: 10%; }
   body.print-mode.hide-totals .col-item { width: 42%; }
 
-  @page { size: letter portrait; margin: 0.45in; }
+  /* Copie interne : Lettre paysage, avec Pi², coût, marge, frais et coût de revient */
+  .internal-flag { display: none; }
+  body.print-internal .internal-flag { display: block; margin-top: 6px; padding: 3px 8px; border: 2px solid var(--brand);
+    color: var(--brand); font-weight: 800; font-size: 11px; letter-spacing: .8px; text-transform: uppercase; text-align: center; }
+  body.print-internal button.fees { display: none !important; }
+  body.print-internal td.internal .pv { font-weight: 600; }
+  body.print-internal .feelist { cursor: default; }
+  body.print-mode.print-internal .col-qty { width: 5%; } body.print-mode.print-internal .col-item { width: 22%; }
+  body.print-mode.print-internal .col-code { width: 10%; } body.print-mode.print-internal .col-dim { width: 10%; }
+  body.print-mode.print-internal .col-sqft { width: 6%; } body.print-mode.print-internal .col-cost { width: 11%; }
+  body.print-mode.print-internal .col-marge { width: 6%; } body.print-mode.print-internal .col-vm { width: 10%; }
+  body.print-mode.print-internal .col-vu { width: 10%; } body.print-mode.print-internal .col-tot { width: 10%; }
+  body.print-mode.print-internal.hide-totals .col-item { width: 32%; }
   @media print {
     html, body { background: #fff !important; overflow: visible !important; }
     .toolbar, .no-print { display: none !important; }
@@ -213,11 +225,13 @@
     .page { box-shadow: none; margin: 0; }
   }
 </style>
+<style id="pageSize">@page { size: letter portrait; margin: 0.45in; }</style>
 </head>
 <body>
 
 <div class="toolbar no-print">
   <button class="primary" id="btnPdf" title="Ouvre la boîte d'impression : choisir « Enregistrer en PDF »">⬇ Exporter PDF</button>
+  <button id="btnInternal" title="Imprime avec les pi², coûts, marges, frais et coûts de revient (format paysage). Pour usage interne seulement.">Imprimer copie interne</button>
   <button id="btnNew">Nouvelle soumission</button>
   <button id="btnSave" title="Enregistre la soumission (.json) pour la rouvrir plus tard : vous choisissez le dossier">Enregistrer (.json)</button>
   <label class="btn" for="fileOpen" title="Rouvrir une soumission enregistrée">Ouvrir…</label>
@@ -237,6 +251,7 @@
     </div>
     <div class="doc-title">
       <h1>SOUMISSION</h1>
+      <div class="internal-flag">Copie interne – ne pas transmettre au client</div>
       <div class="row"><span>N° :</span><input id="quoteNo" placeholder="S-0001"></div>
       <div class="row"><span>Date :</span><input id="date" type="date"></div>
       <div class="row"><span>Valide jusqu'au :</span><input id="validUntil" type="date"></div>
@@ -802,8 +817,11 @@
   }
 
   // ---------- Impression / PDF ----------
-  var PRINT_WIDTH_IN = 8.5 - 0.9;
-  var PRINT_HEIGHT_PX = (11 - 0.9) * 96 - 6; // hauteur utile d'une feuille Lettre (marges 0,45 po)
+  // Zone utile d'une feuille Lettre (marges 0,45 po) : portrait pour le client, paysage pour la copie interne
+  var SHEETS = {
+    client:  { w: 8.5 - 0.9, h: (11 - 0.9) * 96 - 6, size: "letter portrait" },
+    interne: { w: 11 - 0.9, h: (8.5 - 0.9) * 96 - 6, size: "letter landscape" }
+  };
   var MIN_FIT = 0.5; // en deçà, on laisse le contenu continuer sur une 2e page
   var savedTitle = null;
 
@@ -822,13 +840,18 @@
       pv.textContent = el.type === "date" ? fmtDate(el.value) : el.value;
     });
   }
-  function enterPrintMode() {
+  function enterPrintMode(internal) {
     if (document.body.classList.contains("print-mode")) return;
+    internal = internal === true;
+    var sheet = internal ? SHEETS.interne : SHEETS.client;
+    var PRINT_WIDTH_IN = sheet.w, PRINT_HEIGHT_PX = sheet.h;
+    $("pageSize").textContent = "@page { size: " + sheet.size + "; margin: 0.45in; }";
     refreshUi();
     buildPrintText();
     var page = $("page");
     page.style.setProperty("--fit", 1);
     document.body.classList.add("print-mode");
+    document.body.classList.toggle("print-internal", internal);
     // Mise à l'échelle pour que tout tienne sur une seule page
     // (la page est élargie d'autant pour garder toute la largeur de la feuille)
     var fit = 1;
@@ -843,19 +866,25 @@
     page.style.width = (PRINT_WIDTH_IN / fit) + "in";
     page.style.setProperty("--fit", fit.toFixed(3));
     savedTitle = document.title;
-    document.title = fileBaseName(); // nom de fichier proposé pour le PDF
+    document.title = fileBaseName() + (internal ? " - INTERNE" : ""); // nom de fichier proposé pour le PDF
   }
   function exitPrintMode() {
-    document.body.classList.remove("print-mode");
+    document.body.classList.remove("print-mode", "print-internal");
+    $("pageSize").textContent = "@page { size: " + SHEETS.client.size + "; margin: 0.45in; }";
     $("page").style.removeProperty("--fit");
     $("page").style.width = "";
     if (savedTitle != null) { document.title = savedTitle; savedTitle = null; }
   }
-  window.addEventListener("beforeprint", enterPrintMode);
+  window.addEventListener("beforeprint", function () { enterPrintMode(false); });
   window.addEventListener("afterprint", exitPrintMode);
 
   $("btnPdf").addEventListener("click", function () {
-    enterPrintMode();
+    enterPrintMode(false);
+    window.print();
+    setTimeout(exitPrintMode, 500);
+  });
+  $("btnInternal").addEventListener("click", function () {
+    enterPrintMode(true);
     window.print();
     setTimeout(exitPrintMode, 500);
   });
