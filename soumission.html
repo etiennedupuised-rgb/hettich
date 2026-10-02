@@ -106,6 +106,10 @@
   .feelist span:last-child { white-space: nowrap; font-weight: 700; }
   .feelist .landed { border-top: 1px solid #d8b24a; margin-top: 2px; padding-top: 2px; color: var(--ink); font-weight: 700; }
   .feelist .landed span:first-child { white-space: nowrap; }
+  /* Séparations entre les colonnes (écran et PDF) */
+  table.items td + td { border-left: 1px solid var(--line); }
+  table.items th + th { border-left: 1px solid rgba(255,255,255,.22); }
+  table.items td.act, table.items th.col-act { border-left: none; }
   td.act { white-space: nowrap; text-align: center; }
   /* Frais ajoutés au coût (carburant, transport, autres) */
   button.fees { display: block; width: 100%; margin-top: 1px; padding: 1px 3px; font-size: 10px; line-height: 1.3;
