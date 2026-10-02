@@ -79,6 +79,10 @@
   table.items th.internal { background: #c99a1e; }
   table.items td.internal { background: var(--internal) !important; }
   table.items td textarea { min-height: 1.9em; padding: 3px 5px; }
+  /* Note sous les vendants (frais supplémentaires, etc.) : visible dans le PDF, sous le prix */
+  table.items td textarea.pnote { font-size: 11px; font-style: italic; font-weight: 400; color: var(--muted);
+    text-align: center; min-height: 1.5em; padding: 1px 4px; }
+  table.items td textarea.pnote::placeholder { color: #c4c9cf; }
   table.items td textarea[data-f="info"] { font-size: 12px; font-style: italic; color: var(--muted); min-height: 1.6em; }
   table.items td textarea[data-f="info"]::placeholder { color: #c4c9cf; }
   td.calc input { color: var(--dark); font-weight: 700; }
@@ -193,6 +197,9 @@
   /* Infos de l'item : sous l'item, plus petit ; rien si vide */
   body.print-mode .pv.pv-info { font-size: 12px; font-style: italic; color: var(--muted); padding: 0 0 3px; min-height: 0; }
   body.print-mode .pv.pv-info:empty { display: none; }
+  body.print-mode table.items td .pv.pv-vmnote, body.print-mode table.items td .pv.pv-vunote {
+    font-size: 10.5px; font-style: italic; font-weight: 400; color: var(--muted); text-align: center; padding: 0 0 3px; min-height: 0; }
+  body.print-mode .pv.pv-vmnote:empty, body.print-mode .pv.pv-vunote:empty { display: none; }
   body.print-mode td.resettable { position: static; }
   body.print-mode .field .pv { font-size: 15px; font-weight: 600; }
   body.print-mode .field.full .pv, body.print-mode .notes .pv { font-size: 13px; font-weight: 400; }
@@ -411,7 +418,7 @@
   }
 
   // ---------- Lignes ----------
-  var FIELDS = ["qty", "item", "info", "code", "dim", "sqft", "cost", "marge", "vm", "vu"];
+  var FIELDS = ["qty", "item", "info", "code", "dim", "sqft", "cost", "marge", "vm", "vmnote", "vu", "vunote"];
 
   var RESET = '<button type="button" class="reset no-print" data-a="reset" tabindex="-1" title="Revenir au calcul automatique">↺</button>';
   function rowTemplate() {
@@ -426,8 +433,10 @@
       '<td class="num internal"><input data-f="cost" inputmode="decimal"><div class="feelist" data-a="fees" title="Cliquer pour modifier les frais"></div></td>' +
       '<td class="num internal"><input data-f="marge" inputmode="decimal">' +
         '<button type="button" class="fees" data-a="fees" title="Surcharge carburant, transport, autres frais">+ frais</button></td>' +
-      '<td class="num calc resettable"><input data-f="vm" inputmode="decimal" placeholder="vide">' + RESET + '</td>' +
-      '<td class="num calc resettable"><input data-f="vu" inputmode="decimal" placeholder="vide">' + RESET + '</td>' +
+      '<td class="num calc resettable"><input data-f="vm" inputmode="decimal" placeholder="vide">' + RESET +
+        '<textarea data-f="vmnote" class="pnote" rows="1" placeholder="Note"></textarea></td>' +
+      '<td class="num calc resettable"><input data-f="vu" inputmode="decimal" placeholder="vide">' + RESET +
+        '<textarea data-f="vunote" class="pnote" rows="1" placeholder="Note"></textarea></td>' +
       '<td class="num tot"><input data-f="tot" readonly tabindex="-1"></td>' +
       '<td class="act">' +
         '<button type="button" data-a="up" title="Monter">▲</button>' +
@@ -532,7 +541,7 @@
     ["cost", "marge", "vm", "vu"].forEach(function (f) { formatField(q(tr, f)); });
     if (after) after.after(tr); else tbody.appendChild(tr);
     recalcRow(tr);
-    autosize(q(tr, "item")); autosize(q(tr, "info"));
+    ["item", "info", "vmnote", "vunote"].forEach(function (f) { autosize(q(tr, f)); });
     return tr;
   }
 
@@ -602,7 +611,7 @@
     var tot = isFinite(qty) && isFinite(vu) ? qty * vu : NaN;
     q(tr, "tot").value = fmtD(tot);
     tr.dataset.total = isFinite(tot) ? tot : 0;
-    var blank = ["qty", "item", "info", "code", "dim", "vm", "vu"].every(function (f) { return !q(tr, f).value.trim(); });
+    var blank = ["qty", "item", "info", "code", "dim", "vm", "vmnote", "vu", "vunote"].every(function (f) { return !q(tr, f).value.trim(); });
     tr.classList.toggle("blank", blank);
   }
 
