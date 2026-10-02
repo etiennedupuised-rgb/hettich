@@ -197,9 +197,9 @@
   /* Infos de l'item : sous l'item, plus petit ; rien si vide */
   body.print-mode .pv.pv-info { font-size: 12px; font-style: italic; color: var(--muted); padding: 0 0 3px; min-height: 0; }
   body.print-mode .pv.pv-info:empty { display: none; }
-  body.print-mode table.items td .pv.pv-vmnote, body.print-mode table.items td .pv.pv-vunote {
+  body.print-mode table.items td .pv.pv-vmnote, body.print-mode table.items td .pv.pv-vunote, body.print-mode table.items td .pv.pv-totnote {
     font-size: 10.5px; font-style: italic; font-weight: 400; color: var(--muted); text-align: center; padding: 0 0 3px; min-height: 0; }
-  body.print-mode .pv.pv-vmnote:empty, body.print-mode .pv.pv-vunote:empty { display: none; }
+  body.print-mode .pv.pv-vmnote:empty, body.print-mode .pv.pv-vunote:empty, body.print-mode .pv.pv-totnote:empty { display: none; }
   body.print-mode td.resettable { position: static; }
   body.print-mode .field .pv { font-size: 15px; font-weight: 600; }
   body.print-mode .field.full .pv, body.print-mode .notes .pv { font-size: 13px; font-weight: 400; }
@@ -418,7 +418,7 @@
   }
 
   // ---------- Lignes ----------
-  var FIELDS = ["qty", "item", "info", "code", "dim", "sqft", "cost", "marge", "vm", "vmnote", "vu", "vunote"];
+  var FIELDS = ["qty", "item", "info", "code", "dim", "sqft", "cost", "marge", "vm", "vmnote", "vu", "vunote", "totnote"];
 
   var RESET = '<button type="button" class="reset no-print" data-a="reset" tabindex="-1" title="Revenir au calcul automatique">↺</button>';
   function rowTemplate() {
@@ -437,7 +437,8 @@
         '<textarea data-f="vmnote" class="pnote" rows="1" placeholder="Note"></textarea></td>' +
       '<td class="num calc resettable"><input data-f="vu" inputmode="decimal" placeholder="vide">' + RESET +
         '<textarea data-f="vunote" class="pnote" rows="1" placeholder="Note"></textarea></td>' +
-      '<td class="num tot"><input data-f="tot" readonly tabindex="-1"></td>' +
+      '<td class="num tot"><input data-f="tot" readonly tabindex="-1">' +
+        '<textarea data-f="totnote" class="pnote" rows="1" placeholder="Note"></textarea></td>' +
       '<td class="act">' +
         '<button type="button" data-a="up" title="Monter">▲</button>' +
         '<button type="button" data-a="down" title="Descendre">▼</button>' +
@@ -541,7 +542,7 @@
     ["cost", "marge", "vm", "vu"].forEach(function (f) { formatField(q(tr, f)); });
     if (after) after.after(tr); else tbody.appendChild(tr);
     recalcRow(tr);
-    ["item", "info", "vmnote", "vunote"].forEach(function (f) { autosize(q(tr, f)); });
+    ["item", "info", "vmnote", "vunote", "totnote"].forEach(function (f) { autosize(q(tr, f)); });
     return tr;
   }
 
@@ -611,7 +612,7 @@
     var tot = isFinite(qty) && isFinite(vu) ? qty * vu : NaN;
     q(tr, "tot").value = fmtD(tot);
     tr.dataset.total = isFinite(tot) ? tot : 0;
-    var blank = ["qty", "item", "info", "code", "dim", "vm", "vmnote", "vu", "vunote"].every(function (f) { return !q(tr, f).value.trim(); });
+    var blank = ["qty", "item", "info", "code", "dim", "vm", "vmnote", "vu", "vunote", "totnote"].every(function (f) { return !q(tr, f).value.trim(); });
     tr.classList.toggle("blank", blank);
   }
 
