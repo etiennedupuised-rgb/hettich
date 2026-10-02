@@ -37,8 +37,9 @@
   input[type=file] { display: none; }
 
   /* ---------- Page ---------- */
-  .page { width: 1060px; max-width: calc(100% - 32px); margin: 20px auto 60px; background: #fff;
-    padding: 0.55in 0.5in; box-shadow: 0 2px 14px rgba(0,0,0,.08); border-radius: 4px; }
+  /* À l'écran : pleine largeur pour la saisie (le PDF garde son format Lettre, voir print-mode) */
+  .page { width: auto; max-width: none; margin: 16px 16px 60px; background: #fff;
+    padding: 28px 32px; box-shadow: 0 2px 14px rgba(0,0,0,.08); border-radius: 4px; }
 
   input, textarea { font: inherit; color: inherit; border: 1px solid transparent; background: transparent;
     border-radius: 4px; padding: 3px 5px; width: 100%; }
@@ -78,6 +79,8 @@
   table.items th.internal { background: #c99a1e; }
   table.items td.internal { background: var(--internal) !important; }
   table.items td textarea { min-height: 1.9em; padding: 3px 5px; }
+  table.items td textarea[data-f="info"] { font-size: 12px; font-style: italic; color: var(--muted); min-height: 1.6em; }
+  table.items td textarea[data-f="info"]::placeholder { color: #c4c9cf; }
   td.calc input { color: var(--dark); font-weight: 700; }
   td.calc input.manual { font-weight: 600; }
   td.internal input.derived { color: #8a6500; font-weight: 700; }
@@ -175,6 +178,10 @@
   body.print-mode tr.blank, body.print-mode .empty-print { display: none !important; }
   body.print-mode .page input, body.print-mode .page textarea { display: none !important; }
   body.print-mode .pv { display: block; white-space: pre-wrap; overflow-wrap: anywhere; padding: 3px 0; min-height: 1.4em; }
+  /* Infos de l'item : sous l'item, plus petit ; rien si vide */
+  body.print-mode .pv.pv-info { font-size: 12px; font-style: italic; color: var(--muted); padding: 0 0 3px; min-height: 0; }
+  body.print-mode .pv.pv-info:empty { display: none; }
+  body.print-mode td.resettable { position: static; }
   body.print-mode .field .pv { font-size: 15px; font-weight: 600; }
   body.print-mode .field.full .pv, body.print-mode .notes .pv { font-size: 13px; font-weight: 400; }
   body.print-mode .company .pv { font-size: 12px; color: var(--muted); margin-top: 6px; }
@@ -376,14 +383,15 @@
   }
 
   // ---------- Lignes ----------
-  var FIELDS = ["qty", "item", "code", "dim", "sqft", "cost", "marge", "vm", "vu"];
+  var FIELDS = ["qty", "item", "info", "code", "dim", "sqft", "cost", "marge", "vm", "vu"];
 
   var RESET = '<button type="button" class="reset no-print" data-a="reset" tabindex="-1" title="Revenir au calcul automatique">↺</button>';
   function rowTemplate() {
     var tr = document.createElement("tr");
     tr.innerHTML =
       '<td class="num"><input data-f="qty" inputmode="decimal"></td>' +
-      '<td><textarea data-f="item" rows="1"></textarea></td>' +
+      '<td><textarea data-f="item" rows="1"></textarea>' +
+        '<textarea data-f="info" rows="1" placeholder="Infos (s\'affiche sous l\'item dans le PDF)"></textarea></td>' +
       '<td><input data-f="code"></td>' +
       '<td><input data-f="dim" placeholder="49 x 97"></td>' +
       '<td class="num internal resettable"><input data-f="sqft" inputmode="decimal" placeholder="vide">' + RESET + '</td>' +
@@ -495,7 +503,7 @@
     if (data.fees) setFees(tr, data.fees);
     if (after) after.after(tr); else tbody.appendChild(tr);
     recalcRow(tr);
-    autosize(q(tr, "item"));
+    autosize(q(tr, "item")); autosize(q(tr, "info"));
     return tr;
   }
 
@@ -562,7 +570,7 @@
     var tot = isFinite(qty) && isFinite(vu) ? qty * vu : NaN;
     q(tr, "tot").value = isFinite(tot) ? num2.format(tot) : "";
     tr.dataset.total = isFinite(tot) ? tot : 0;
-    var blank = ["qty", "item", "code", "dim", "vm", "vu"].every(function (f) { return !q(tr, f).value.trim(); });
+    var blank = ["qty", "item", "info", "code", "dim", "vm", "vu"].every(function (f) { return !q(tr, f).value.trim(); });
     tr.classList.toggle("blank", blank);
   }
 
@@ -787,7 +795,7 @@
     document.querySelectorAll(".page input, .page textarea").forEach(function (el) {
       var pv = el.nextElementSibling;
       if (!pv || !pv.classList.contains("pv")) {
-        pv = document.createElement("div"); pv.className = "pv";
+        pv = document.createElement("div"); pv.className = "pv" + (el.dataset.f ? " pv-" + el.dataset.f : "");
         el.after(pv);
       }
       pv.textContent = el.type === "date" ? fmtDate(el.value) : el.value;
