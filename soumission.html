@@ -95,7 +95,7 @@
   td.resettable button.reset { display: none; position: absolute; left: 0; top: 4px; border: none; background: none;
     padding: 0 2px; font-size: 12px; color: #8a6500; cursor: pointer; line-height: 1.4; }
   td.resettable input.manual ~ button.reset { display: block; }
-  td.resettable input.manual { padding-left: 14px; }
+  td.resettable input.manual { padding-left: 14px; padding-right: 14px; }
   td.resettable input::placeholder { color: transparent; }
   td.resettable input.manual::placeholder { color: #b9a46a; font-style: italic; font-weight: 400; }
   /* Liste des frais sous le coût */
@@ -106,6 +106,14 @@
   .feelist span:last-child { white-space: nowrap; font-weight: 700; }
   .feelist .landed { border-top: 1px solid #d8b24a; margin-top: 2px; padding-top: 2px; color: var(--ink); font-weight: 700; }
   .feelist .landed span:first-child { white-space: nowrap; }
+  /* Colonnes centrées : Qté, Code, Dimensions, Pi², Marge, Vendant / mille, Vendant / unité */
+  table.items th.ctr { text-align: center; }
+  table.items td input[data-f="qty"], table.items td input[data-f="code"], table.items td input[data-f="dim"],
+  table.items td input[data-f="sqft"], table.items td input[data-f="marge"], table.items td input[data-f="vm"],
+  table.items td input[data-f="vu"] { text-align: center; }
+  body.print-mode table.items td .pv.pv-qty, body.print-mode table.items td .pv.pv-code, body.print-mode table.items td .pv.pv-dim,
+  body.print-mode table.items td .pv.pv-sqft, body.print-mode table.items td .pv.pv-marge, body.print-mode table.items td .pv.pv-vm,
+  body.print-mode table.items td .pv.pv-vu { text-align: center; }
   /* Séparations entre les colonnes (écran et PDF) */
   table.items td + td { border-left: 1px solid var(--line); }
   table.items th + th { border-left: 1px solid rgba(255,255,255,.22); }
@@ -275,15 +283,15 @@
       </colgroup>
       <thead>
         <tr>
-          <th class="num">Qté</th>
+          <th class="num ctr">Qté</th>
           <th>Item</th>
-          <th>Code de produit</th>
-          <th>Dimensions</th>
-          <th class="num internal" title="Pieds carrés par unité : calculés à partir des dimensions, modifiables">Pi² / unité</th>
+          <th class="ctr">Code de produit</th>
+          <th class="ctr">Dimensions</th>
+          <th class="num ctr internal" title="Pieds carrés par unité : calculés à partir des dimensions, modifiables">Pi² / unité</th>
           <th class="num internal">Coût</th>
-          <th class="num internal">Marge %</th>
-          <th class="num">Vendant / mille</th>
-          <th class="num">Vendant / unité</th>
+          <th class="num ctr internal">Marge %</th>
+          <th class="num ctr">Vendant / mille</th>
+          <th class="num ctr">Vendant / unité</th>
           <th class="num col-tot">Total</th>
           <th class="col-act"></th>
         </tr>
