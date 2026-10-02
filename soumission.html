@@ -281,7 +281,7 @@
     <button id="btnAdd">+ Ajouter une ligne</button>
     <div class="legend">Les colonnes en jaune (<b>Pi²</b>, <b>Coût</b>, <b>Marge</b>) ne s'impriment jamais. Vendant / mille = coût de revient ÷ (1 − marge), où le coût de revient = coût + frais avant marge (bouton <b>+ frais</b> sous la marge : surcharge carburant, transport, autres, en $ ou en %, chacun avant ou après la marge ; les frais après marge s'ajoutent au prix de vente).
       <b>Pi² / unité</b> : calculés à partir des dimensions (ex. <i>49 x 97</i>, <i>4' x 8'</i>, <i>2800 x 2070 mm</i>) et modifiables à la main.
-      Vendant / unité = vendant/mille × pi² ÷ 1000, ou vendant/mille ÷ 1000 si les dimensions sont vides (quincaillerie au mille).
+      Vendant / unité = vendant/mille × pi² ÷ 1000. Si la case Pi² est vide, le coût est un coût unitaire : le vendant / unité = coût ÷ (1 − marge) et aucun prix au mille n'est affiché (un vendant / mille entré à la main donne alors vendant/mille ÷ 1000).
       Vous pouvez aussi entrer directement un vendant : la marge est alors calculée (en brun). Si un vendant / mille est entré, il a priorité sur le vendant / unité.
       Si seul le vendant / unité est entré, aucun prix au mille n'est affiché et la marge est calculée avec le coût comme coût unitaire.
       Une case de prix ou de pi² modifiée à la main reste telle quelle, même vidée ; cliquez sur <b>↺</b> pour revenir au calcul automatique.
@@ -538,13 +538,16 @@
       sqI.value = isFinite(sq) ? num2.format(sq) : "";
     }
     // Facteur mille → unité (null si pi² inconnus et dimensions non vides)
-    var factor = isFinite(sq) && sq > 0 ? sq / 1000 : (!dimText.trim() ? 1 / 1000 : null);
+    var hasSq = isFinite(sq) && sq > 0;
+    // Facteur mille → unité : selon les pi², ou ÷ 1000 (quincaillerie au mille) si un vendant / mille est entré sans pi²
+    var factor = hasSq ? sq / 1000 : 1 / 1000;
 
     // Une case vidée à la main reste vide (manual + valeur vide).
     // Vendant / mille vidé = item sans prix au mille : le coût est alors un coût unitaire.
     var vmVal = parseNum(vmI.value), vuVal = parseNum(vuI.value);
     var vmBlank = vmManual && !isFinite(vmVal), vuBlank = vuManual && !isFinite(vuVal);
-    var unitMode = vmBlank;
+    // Sans pi² (ou vendant / mille vidé) : prix à l'unité = coût de revient ÷ (1 − marge)
+    var unitMode = vmBlank || !hasSq;
     var vm, priceDriven = false, priceForMargin, unitPrice = NaN;
     if (vmManual && !vmBlank) {
       vm = vmVal; priceDriven = true; priceForMargin = removeAfterFees(vm, fees);
@@ -554,7 +557,7 @@
       priceDriven = true; priceForMargin = removeAfterFees(vuVal, fees);
     } else {
       var p = addAfterFees(priceFromCost(cost, parseNum(margeI.value)), fees);
-      if (unitMode) { vm = NaN; unitPrice = p; }
+      if (unitMode) { vm = NaN; unitPrice = p; if (!vmManual) vmI.value = ""; }
       else { vm = p; vmI.value = isFinite(vm) ? num2.format(vm) : ""; }
     }
     if (priceDriven) {
@@ -567,7 +570,7 @@
     if (vuManual) {
       vu = vuVal; // NaN si vidée
     } else {
-      vu = unitMode ? unitPrice : (isFinite(vm) && factor ? vm * factor : NaN);
+      vu = isFinite(vm) ? vm * factor : (unitMode ? unitPrice : NaN);
       vuI.value = isFinite(vu) ? num2.format(vu) : "";
     }
     var qty = parseNum(q(tr, "qty").value);
