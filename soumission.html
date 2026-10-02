@@ -361,6 +361,9 @@
     if (s === "") return NaN;
     return Number(s);
   }
+  // Affichage dans les cases : montants avec $, marge avec %
+  function fmtD(n) { return isFinite(n) ? num2.format(n) + " $" : ""; }
+  function fmtP(n) { return isFinite(n) ? num2.format(n).replace(/,00$/, "") + " %" : ""; }
   function fmtMoney(n) { return isFinite(n) ? money.format(n) : ""; }
 
   // Superficie en pi² à partir du texte des dimensions
@@ -497,7 +500,7 @@
     if (box.children.length && isFinite(landed)) {
       var t = document.createElement("div"); t.className = "landed";
       t.innerHTML = "<span>Coût de revient</span><span></span>";
-      t.lastChild.textContent = num2.format(landed);
+      t.lastChild.textContent = fmtD(landed);
       t.title = "Coût + frais avant marge (les frais après marge s'ajoutent au prix de vente)";
       box.appendChild(t);
     }
@@ -518,6 +521,7 @@
     if (data.vuManual) q(tr, "vu").classList.add("manual");
     if (data.sqftManual) q(tr, "sqft").classList.add("manual");
     if (data.fees) setFees(tr, data.fees);
+    ["cost", "marge", "vm", "vu"].forEach(function (f) { formatField(q(tr, f)); });
     if (after) after.after(tr); else tbody.appendChild(tr);
     recalcRow(tr);
     autosize(q(tr, "item")); autosize(q(tr, "info"));
@@ -571,11 +575,11 @@
     } else {
       var p = addAfterFees(priceFromCost(cost, parseNum(margeI.value)), fees);
       if (unitMode) { vm = NaN; unitPrice = p; if (!vmManual) vmI.value = ""; }
-      else { vm = p; vmI.value = isFinite(vm) ? num2.format(vm) : ""; }
+      else { vm = p; vmI.value = fmtD(vm); }
     }
     if (priceDriven) {
       var m = marginFromPrice(cost, priceForMargin);
-      margeI.value = isFinite(m) ? num2.format(m) : "";
+      margeI.value = fmtP(m);
     }
     margeI.classList.toggle("derived", priceDriven);
 
@@ -584,11 +588,11 @@
       vu = vuVal; // NaN si vidée
     } else {
       vu = isFinite(vm) ? vm * factor : (unitMode ? unitPrice : NaN);
-      vuI.value = isFinite(vu) ? num2.format(vu) : "";
+      vuI.value = fmtD(vu);
     }
     var qty = parseNum(q(tr, "qty").value);
     var tot = isFinite(qty) && isFinite(vu) ? qty * vu : NaN;
-    q(tr, "tot").value = isFinite(tot) ? num2.format(tot) : "";
+    q(tr, "tot").value = fmtD(tot);
     tr.dataset.total = isFinite(tot) ? tot : 0;
     var blank = ["qty", "item", "info", "code", "dim", "vm", "vu"].every(function (f) { return !q(tr, f).value.trim(); });
     tr.classList.toggle("blank", blank);
@@ -628,12 +632,19 @@
     if (el.tagName === "TEXTAREA") autosize(el);
     recalcAll(); save();
   });
+  // Ajoute $ ou % à une case de prix, de coût ou de marge (sans changer la valeur)
+  function formatField(el) {
+    var f = el.dataset.f, n = parseNum(el.value);
+    if (!isFinite(n)) return;
+    if (f === "marge") el.value = fmtP(n);
+    else if (f === "cost" || ((f === "vm" || f === "vu") && el.classList.contains("manual"))) el.value = fmtD(n);
+  }
   tbody.addEventListener("focusout", function (e) {
     var el = e.target, f = el.dataset && el.dataset.f;
-    if ((f === "vm" || f === "vu" || f === "sqft") && el.classList.contains("manual")) {
+    if (f === "sqft" && el.classList.contains("manual")) {
       var n = parseNum(el.value); if (isFinite(n)) el.value = num2.format(n);
     }
-    if (f === "cost") { var c = parseNum(el.value); if (isFinite(c)) el.value = num2.format(c); }
+    if (f === "vm" || f === "vu" || f === "cost" || f === "marge") formatField(el);
   });
   tbody.addEventListener("keydown", function (e) {
     // Entrée dans la dernière ligne = nouvelle ligne
@@ -691,7 +702,7 @@
   }
   function updateFeeLanded() {
     var v = feeRow && feeRow.dataset.landed !== "" ? Number(feeRow.dataset.landed) : NaN;
-    $("feeLanded").textContent = isFinite(v) ? num2.format(v) : "— (entrer un coût)";
+    $("feeLanded").textContent = isFinite(v) ? fmtD(v) : "— (entrer un coût)";
   }
   function onFeeChange() {
     if (!feeRow) return;
