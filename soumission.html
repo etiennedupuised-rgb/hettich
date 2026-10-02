@@ -224,7 +224,6 @@
   <input type="file" id="fileOpen" accept=".json,application/json">
   <span class="spacer"></span>
   <label class="chk"><input type="checkbox" id="chkTotals" style="width:auto"> Afficher les totaux</label>
-  <label class="chk" title="Marge calculée sur le prix de vente (vendant = coût ÷ (1 − marge)). Décoché : majoration sur le coût (vendant = coût × (1 + marge))."><input type="checkbox" id="chkMarginMode" style="width:auto" checked> Marge sur prix de vente</label>
 </div>
 
 <div class="page" id="page">
@@ -375,15 +374,14 @@
     return { sq: sq, unit: unit };
   }
 
-  function isMarginOnPrice() { return $("chkMarginMode").checked; }
+  // Marge sur le prix de vente : vendant = coût ÷ (1 − marge)
   function priceFromCost(c, m) {
     if (!isFinite(c) || !isFinite(m)) return NaN;
-    if (isMarginOnPrice()) return m >= 100 ? NaN : c / (1 - m / 100);
-    return c * (1 + m / 100);
+    return m >= 100 ? NaN : c / (1 - m / 100);
   }
   function marginFromPrice(c, p) {
     if (!isFinite(c) || !isFinite(p) || p === 0) return NaN;
-    return isMarginOnPrice() ? (p - c) / p * 100 : (c === 0 ? NaN : (p - c) / c * 100);
+    return (p - c) / p * 100;
   }
 
   // ---------- Lignes ----------
@@ -723,13 +721,11 @@
     var d = { rows: Array.prototype.map.call(tbody.rows, rowData) };
     HEADER.forEach(function (k) { d[k] = $(k).value; });
     d.showTotals = $("chkTotals").checked;
-    d.marginOnPrice = $("chkMarginMode").checked;
     return d;
   }
   function apply(d) {
     HEADER.forEach(function (k) { if (d[k] != null) $(k).value = d[k]; });
     if (d.showTotals != null) $("chkTotals").checked = d.showTotals;
-    if (d.marginOnPrice != null) $("chkMarginMode").checked = d.marginOnPrice;
     closeFees();
     tbody.innerHTML = "";
     (d.rows && d.rows.length ? d.rows : [{}, {}, {}]).forEach(function (r) { addRow(r); });
@@ -751,7 +747,7 @@
     clearTimeout(saveTimer); saveTimer = null;
     var d = collect();
     var s = {}; SETTINGS.forEach(function (k) { s[k] = d[k]; });
-    s.notes = d.notes; s.showTotals = d.showTotals; s.marginOnPrice = d.marginOnPrice;
+    s.notes = d.notes; s.showTotals = d.showTotals;
     store(SETTINGS_KEY, JSON.stringify(s));
   }
   function save() {
@@ -785,7 +781,6 @@
     $(k).addEventListener("change", function () { recalcAll(); save(); });
   });
   $("chkTotals").addEventListener("change", function () { refreshUi(); save(); });
-  $("chkMarginMode").addEventListener("change", function () { recalcAll(); save(); });
   $("btnAdd").addEventListener("click", function () { q(addRow(), "qty").focus(); save(); });
 
   function today() { var d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); }
