@@ -737,20 +737,39 @@
     recalcAll();
   }
 
+  // Seuls les paramètres sont mémorisés dans le navigateur (vendeur, coordonnées,
+  // notes habituelles, options) : le formulaire s'ouvre toujours vierge.
   var saveTimer;
   function saveNow() {
     clearTimeout(saveTimer); saveTimer = null;
     var d = collect();
-    store(DRAFT_KEY, JSON.stringify(d));
     var s = {}; SETTINGS.forEach(function (k) { s[k] = d[k]; });
+    s.notes = d.notes; s.showTotals = d.showTotals; s.marginOnPrice = d.marginOnPrice;
     store(SETTINGS_KEY, JSON.stringify(s));
   }
   function save() {
     clearTimeout(saveTimer);
     saveTimer = setTimeout(saveNow, 250);
   }
-  // Sauvegarde immédiate si la page est fermée ou rechargée
+  // Sauvegarde immédiate des paramètres si la page est fermée ou rechargée
   window.addEventListener("pagehide", function () { if (saveTimer) saveNow(); });
+
+  // ---------- Soumission non enregistrée ----------
+  // On compare le contenu actuel à celui du dernier enregistrement / ouverture.
+  var cleanSnapshot = "";
+  function quoteKey() {
+    var d = collect();
+    SETTINGS.forEach(function (k) { delete d[k]; });
+    return JSON.stringify(d);
+  }
+  function markClean() { cleanSnapshot = quoteKey(); }
+  function isDirty() { return quoteKey() !== cleanSnapshot; }
+  // Le navigateur affiche sa propre fenêtre « Quitter la page ? » (texte non modifiable)
+  window.addEventListener("beforeunload", function (e) {
+    if (!isDirty()) return;
+    e.preventDefault();
+    e.returnValue = "";
+  });
 
   document.querySelectorAll(".page > header input, .page > header textarea, .info input, .info textarea, #notes")
     .forEach(function (el) { el.addEventListener("input", function () { refreshUi(); save(); }); });
@@ -765,11 +784,11 @@
   function today() { var d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); }
 
   $("btnNew").addEventListener("click", function () {
-    if (!confirm("Effacer la soumission actuelle et en commencer une nouvelle ?\n(Le vendeur et les coordonnées sont conservés.)")) return;
+    if (isDirty() && !confirm("La soumission actuelle n'a pas été enregistrée.\nL'effacer quand même et en commencer une nouvelle ?")) return;
     var s = {}; SETTINGS.forEach(function (k) { s[k] = $(k).value; });
     var keepNotes = $("notes").value;
     apply(Object.assign({ quoteNo: "", date: today(), validUntil: "", client: "", project: "", extra: "", notes: keepNotes, handlingV: "", fuelV: "", rows: [] }, s));
-    save();
+    save(); markClean();
   });
 
   // Nom de fichier : Client - N° de soumission - Date (AAAA-MM-JJ)
@@ -852,6 +871,7 @@
         });
         var w = await handle.createWritable();
         await w.write(json); await w.close();
+        markClean();
         return;
       } catch (e) {
         if (e && e.name === "AbortError") return; // annulé par l'utilisateur
@@ -863,13 +883,17 @@
     a.download = name;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+    markClean();
   });
 
+  $("fileOpen").addEventListener("click", function (e) {
+    if (isDirty() && !confirm("La soumission actuelle n'a pas été enregistrée.\nOuvrir une autre soumission quand même ?")) e.preventDefault();
+  });
   $("fileOpen").addEventListener("change", function () {
     var f = this.files[0]; if (!f) return;
     var r = new FileReader();
     r.onload = function () {
-      try { apply(JSON.parse(r.result)); save(); }
+      try { apply(JSON.parse(r.result)); save(); markClean(); }
       catch (e) { alert("Fichier invalide : " + e.message); }
     };
     r.readAsText(f); this.value = "";
@@ -887,12 +911,13 @@
 
   // ---------- Démarrage ----------
   var DEFAULT_COMPANY = "5850, rue des Tournelles, Québec (Québec)  G2J 1E4\nTél. : 418 624-1515";
-  var draft = null, settings = {};
-  try { draft = JSON.parse(load(DRAFT_KEY)); } catch (e) {}
+  // Toujours une soumission vierge à l'ouverture (seuls les paramètres sont repris)
+  var settings = {};
   try { settings = JSON.parse(load(SETTINGS_KEY)) || {}; } catch (e) {}
-  apply(draft || Object.assign({ date: today() }, settings));
-  if (!$("date").value) $("date").value = today();
+  try { localStorage.removeItem(DRAFT_KEY); } catch (e) {} // ancien brouillon automatique
+  apply(Object.assign({}, settings, { date: today() }));
   if (!$("company").value.trim()) { $("company").value = DEFAULT_COMPANY; refreshUi(); save(); }
+  markClean();
 })();
 </script>
 </body>
