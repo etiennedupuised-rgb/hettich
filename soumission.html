@@ -263,6 +263,7 @@
   <button id="btnNew">Nouvelle soumission</button>
   <button id="btnSave" title="Enregistre la soumission (.json) pour la rouvrir plus tard : vous choisissez le dossier">Enregistrer (.json)</button>
   <label class="btn" for="fileOpen" title="Rouvrir une soumission enregistrée">Ouvrir…</label>
+  <button id="btnFolder" title="Choisir le dossier où « Enregistrer » et « Ouvrir » s'ouvrent (ex. Documents\SOUMISSIONS)">Dossier…</button>
   <input type="file" id="fileOpen" accept=".json,application/json">
   <span class="spacer"></span>
   <label class="chk" title="Colonne Total (quantité × vendant / unité) sur chaque ligne"><input type="checkbox" id="chkTotals" style="width:auto"> Totaux par ligne</label>
@@ -952,17 +953,55 @@
     setTimeout(exitPrintMode, 500);
   });
 
+  // ---------- Dossier des soumissions (Chrome / Edge) ----------
+  // Le navigateur ne peut pas recevoir un chemin tapé (C:\...) : on demande une fois
+  // le dossier, puis on le mémorise. « Enregistrer » et « Ouvrir » s'y ouvrent ensuite.
+  var folderHandle = null;
+  function idb(mode, fn) {
+    return new Promise(function (resolve) {
+      try {
+        var req = indexedDB.open("cwp-soumission", 1);
+        req.onupgradeneeded = function () { req.result.createObjectStore("handles"); };
+        req.onsuccess = function () {
+          try {
+            var tx = req.result.transaction("handles", mode), st = tx.objectStore("handles");
+            var r2 = fn(st);
+            tx.oncomplete = function () { resolve(r2 && r2.result); };
+            tx.onerror = function () { resolve(null); };
+          } catch (e) { resolve(null); }
+        };
+        req.onerror = function () { resolve(null); };
+      } catch (e) { resolve(null); }
+    });
+  }
+  function updateFolderButton() {
+    var b = $("btnFolder");
+    if (!window.showDirectoryPicker) { b.hidden = true; return; }
+    b.textContent = folderHandle ? "Dossier : " + folderHandle.name : "Choisir le dossier…";
+  }
+  async function chooseFolder() {
+    try {
+      folderHandle = await window.showDirectoryPicker({ id: "soumissions", mode: "readwrite", startIn: folderHandle || "documents" });
+      await idb("readwrite", function (st) { return st.put(folderHandle, "dossier"); });
+    } catch (e) { /* annulé */ }
+    updateFolderButton();
+    return folderHandle;
+  }
+  idb("readonly", function (st) { return st.get("dossier"); }).then(function (h) { folderHandle = h || null; updateFolderButton(); });
+  $("btnFolder").addEventListener("click", chooseFolder);
+  // Options communes : s'ouvre dans le dossier choisi, sinon dans Documents (dernier dossier retenu)
+  function pickerStart() { return folderHandle ? { startIn: folderHandle } : { id: "soumissions", startIn: "documents" }; }
+
   $("btnSave").addEventListener("click", async function () {
     var json = JSON.stringify(collect(), null, 2);
     var name = fileBaseName() + ".json";
-    // Chrome / Edge : fenêtre « Enregistrer sous » pour choisir le dossier
-    // (le dernier dossier utilisé est retenu pour la prochaine fois)
+    // Chrome / Edge : fenêtre « Enregistrer sous », ouverte dans le dossier des soumissions
     if (window.showSaveFilePicker) {
       try {
-        var handle = await window.showSaveFilePicker({
-          id: "soumissions", startIn: "documents", suggestedName: name,
+        var handle = await window.showSaveFilePicker(Object.assign({
+          suggestedName: name,
           types: [{ description: "Soumission", accept: { "application/json": [".json"] } }]
-        });
+        }, pickerStart()));
         var w = await handle.createWritable();
         await w.write(json); await w.close();
         markClean();
@@ -980,16 +1019,28 @@
     markClean();
   });
 
+  function loadQuoteText(text) {
+    try { apply(JSON.parse(text)); save(); markClean(); }
+    catch (e) { alert("Fichier invalide : " + e.message); }
+  }
   $("fileOpen").addEventListener("click", function (e) {
-    if (isDirty() && !confirm("La soumission actuelle n'a pas été enregistrée.\nOuvrir une autre soumission quand même ?")) e.preventDefault();
+    if (isDirty() && !confirm("La soumission actuelle n'a pas été enregistrée.\nOuvrir une autre soumission quand même ?")) { e.preventDefault(); return; }
+    // Chrome / Edge : fenêtre d'ouverture dans le dossier des soumissions
+    if (window.showOpenFilePicker) {
+      e.preventDefault();
+      window.showOpenFilePicker(Object.assign({
+        types: [{ description: "Soumission", accept: { "application/json": [".json"] } }]
+      }, pickerStart())).then(function (hs) { return hs[0].getFile(); })
+        .then(function (f) { return f.text(); }).then(loadQuoteText)
+        .catch(function (err) {
+          if (err && err.name !== "AbortError") alert("La fenêtre d'ouverture n'a pas pu s'afficher. Cliquez de nouveau sur « Ouvrir… ».");
+        });
+    }
   });
   $("fileOpen").addEventListener("change", function () {
     var f = this.files[0]; if (!f) return;
     var r = new FileReader();
-    r.onload = function () {
-      try { apply(JSON.parse(r.result)); save(); markClean(); }
-      catch (e) { alert("Fichier invalide : " + e.message); }
-    };
+    r.onload = function () { loadQuoteText(r.result); };
     r.readAsText(f); this.value = "";
   });
 
