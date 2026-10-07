@@ -157,7 +157,12 @@
   .grand-total .feein select { font: inherit; border: 1px solid var(--line); border-radius: 4px; background: #fff; padding: 2px 4px; }
   .grand-total .srow.total { border-top: 2px solid var(--brand); margin-top: 4px; padding-top: 6px; font-weight: 700; font-size: 15px; }
   .grand-total .srow.sub { color: var(--muted); }
-  body.print-mode.hide-totals .grand-total:not(.has-fees) { display: none; }
+  /* Total de la soumission masqué (plusieurs options) : seuls les frais de commande restent, sans montant pour les % */
+  body.print-mode.no-grand .grand-total:not(.has-fees) { display: none; }
+  body.print-mode.no-grand .grand-total .srow.sub, body.print-mode.no-grand .grand-total .srow.total { display: none; }
+  body.print-mode.no-grand .grand-total .srow.is-pct b { display: none; }
+  body.no-grand:not(.print-mode) .grand-total .srow.sub, body.no-grand:not(.print-mode) .grand-total .srow.total { opacity: .45; }
+  body.no-grand:not(.print-mode) .grand-total .srow.total .lbl::after { content: " (non affiché au client)"; font-size: 11px; font-weight: 400; }
   body.print-mode .grand-total .srow.zero, body.print-mode .grand-total:not(.has-fees) .srow.sub { display: none; }
   .legend { font-size: 11px; color: var(--muted); margin-top: 6px; }
   .legend b { color: #8a6500; }
@@ -260,7 +265,8 @@
   <label class="btn" for="fileOpen" title="Rouvrir une soumission enregistrée">Ouvrir…</label>
   <input type="file" id="fileOpen" accept=".json,application/json">
   <span class="spacer"></span>
-  <label class="chk"><input type="checkbox" id="chkTotals" style="width:auto"> Afficher les totaux</label>
+  <label class="chk" title="Colonne Total (quantité × vendant / unité) sur chaque ligne"><input type="checkbox" id="chkTotals" style="width:auto"> Totaux par ligne</label>
+  <label class="chk" title="Sous-total et total de la soumission. Décochez quand la soumission présente plusieurs options : le total additionnerait des options qui s'excluent."><input type="checkbox" id="chkGrandTotal" style="width:auto" checked> Total de la soumission</label>
 </div>
 
 <div class="page" id="page">
@@ -636,6 +642,7 @@
       var amt = isFinite(v) && v !== 0 ? (pct ? sum * v / 100 : v) : 0;
       var row = $(x[1]);
       row.classList.toggle("zero", !amt);
+      row.classList.toggle("is-pct", !!amt && pct);
       row.querySelector(".pct").textContent = amt && pct ? "(" + num2.format(v).replace(/,00$/, "") + " %)" : "";
       $(x[0] + "Amt").textContent = amt ? fmtMoney(amt) : "";
       if (amt) hasFees = true;
@@ -774,11 +781,14 @@
     var d = { rows: Array.prototype.map.call(tbody.rows, rowData) };
     HEADER.forEach(function (k) { d[k] = $(k).value; });
     d.showTotals = $("chkTotals").checked;
+    d.showGrandTotal = $("chkGrandTotal").checked;
     return d;
   }
   function apply(d) {
     HEADER.forEach(function (k) { if (d[k] != null) $(k).value = d[k]; });
     if (d.showTotals != null) $("chkTotals").checked = d.showTotals;
+    if (d.showGrandTotal != null) $("chkGrandTotal").checked = d.showGrandTotal;
+    else if (d.showTotals != null) $("chkGrandTotal").checked = d.showTotals; // anciens fichiers
     closeFees();
     tbody.innerHTML = "";
     (d.rows && d.rows.length ? d.rows : [{}, {}, {}]).forEach(function (r) { addRow(r); });
@@ -799,6 +809,7 @@
   function refreshUi() {
     fitQuoteNo();
     document.body.classList.toggle("hide-totals", !$("chkTotals").checked);
+    document.body.classList.toggle("no-grand", !$("chkGrandTotal").checked);
     $("sigSeller").textContent = $("seller").value;
     document.querySelectorAll("textarea").forEach(autosize);
     ["extra", "company", "sellerContact"].forEach(function (k) { $(k).closest(".field, .company").classList.toggle("empty-print", !$(k).value.trim()); });
@@ -813,7 +824,7 @@
     clearTimeout(saveTimer); saveTimer = null;
     var d = collect();
     var s = {}; SETTINGS.forEach(function (k) { s[k] = d[k]; });
-    s.notes = d.notes; s.showTotals = d.showTotals;
+    s.notes = d.notes; s.showTotals = d.showTotals; s.showGrandTotal = d.showGrandTotal;
     store(SETTINGS_KEY, JSON.stringify(s));
   }
   function save() {
@@ -847,6 +858,7 @@
     $(k).addEventListener("change", function () { recalcAll(); save(); });
   });
   $("chkTotals").addEventListener("change", function () { refreshUi(); save(); });
+  $("chkGrandTotal").addEventListener("change", function () { refreshUi(); save(); });
   $("btnAdd").addEventListener("click", function () { q(addRow(), "qty").focus(); save(); });
 
   function today() { var d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); }
