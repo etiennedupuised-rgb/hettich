@@ -347,7 +347,7 @@
     <textarea id="notes" rows="3" placeholder="Ex. : Taxes en sus. Livraison incluse dans la zone régulière. Délais à confirmer au moment de la commande."></textarea>
   </section>
 
-  <p class="mention">Prix sujets à changement sans préavis</p>
+  <p class="mention">PRIX SUJETS À CHANGEMENT SANS PRÉAVIS</p>
 
   <footer class="sig">
     <div class="line">Préparé par : <span id="sigSeller"></span></div>
@@ -819,13 +819,13 @@
   }
 
   // Seuls les paramètres sont mémorisés dans le navigateur (vendeur, coordonnées,
-  // notes habituelles, options) : le formulaire s'ouvre toujours vierge.
+  // options d'affichage) : le formulaire s'ouvre toujours vierge.
   var saveTimer;
   function saveNow() {
     clearTimeout(saveTimer); saveTimer = null;
     var d = collect();
     var s = {}; SETTINGS.forEach(function (k) { s[k] = d[k]; });
-    s.notes = d.notes; s.showTotals = d.showTotals; s.showGrandTotal = d.showGrandTotal;
+    s.showTotals = d.showTotals; s.showGrandTotal = d.showGrandTotal;
     store(SETTINGS_KEY, JSON.stringify(s));
   }
   function save() {
@@ -867,8 +867,7 @@
   $("btnNew").addEventListener("click", function () {
     if (isDirty() && !confirm("La soumission actuelle n'a pas été enregistrée.\nL'effacer quand même et en commencer une nouvelle ?")) return;
     var s = {}; SETTINGS.forEach(function (k) { s[k] = $(k).value; });
-    var keepNotes = $("notes").value;
-    apply(Object.assign({ quoteNo: "", date: today(), validUntil: "", client: "", project: "", extra: "", notes: keepNotes, handlingV: "", fuelV: "", rows: [] }, s));
+    apply(Object.assign({ quoteNo: "", date: today(), validUntil: "", client: "", project: "", extra: "", notes: "", handlingV: "", fuelV: "", rows: [] }, s));
     save(); markClean();
   });
 
@@ -1060,6 +1059,7 @@
   var settings = {};
   try { settings = JSON.parse(load(SETTINGS_KEY)) || {}; } catch (e) {}
   try { localStorage.removeItem(DRAFT_KEY); } catch (e) {} // ancien brouillon automatique
+  delete settings.notes; // les notes importantes ne sont plus reprises d'une soumission à l'autre
   apply(Object.assign({}, settings, { date: today() }));
   if (!$("company").value.trim()) { $("company").value = DEFAULT_COMPANY; refreshUi(); save(); }
   markClean();
