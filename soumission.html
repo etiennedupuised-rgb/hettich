@@ -260,6 +260,30 @@
   body.print-internal .internal-flag { display: block; margin-top: 6px; padding: 3px 8px; border: 2px solid var(--brand);
     color: var(--brand); font-weight: 800; font-size: 11px; letter-spacing: .8px; text-transform: uppercase; text-align: center; }
   body.print-internal button.fees { display: none !important; }
+  /* Copie interne compacte : pas de logo ni d'adresse, en-tête d'une ligne, texte plus gros */
+  .internal-head { display: none; }
+  body.print-internal header.top, body.print-internal .info, body.print-internal .mention,
+  body.print-internal footer.sig, body.print-internal .internal-flag { display: none !important; }
+  body.print-internal .internal-head { display: block; margin-bottom: 10px; }
+  .internal-head .ih-title { display: flex; justify-content: space-between; align-items: baseline; gap: 16px;
+    border-bottom: 3px solid var(--brand); padding-bottom: 4px; margin-bottom: 8px; }
+  .internal-head .ih-title b { font-size: 18px; letter-spacing: 1.5px; color: var(--brand); }
+  .internal-head .ih-title span { font-size: 11px; font-weight: 800; letter-spacing: .8px; text-transform: uppercase;
+    color: var(--brand); border: 2px solid var(--brand); padding: 2px 8px; }
+  .internal-head .ih-grid { display: grid; grid-template-columns: 2.2fr 2.2fr 1.4fr 1.2fr 1.6fr; gap: 4px 18px; }
+  .internal-head .ih-grid div { min-width: 0; }
+  .internal-head label { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); font-weight: 700; }
+  .internal-head .ih-grid span { font-size: 15px; font-weight: 700; overflow-wrap: anywhere; }
+  body.print-internal table.items { margin-top: 4px; }
+  body.print-internal table.items th { font-size: 11.5px; padding: 6px 5px; }
+  body.print-internal table.items td .pv { font-size: 14px; }
+  body.print-internal table.items td .pv.pv-info, body.print-internal .pv.pv-vmnote,
+  body.print-internal .pv.pv-vunote, body.print-internal .pv.pv-totnote { font-size: 12px; }
+  body.print-internal .feelist { font-size: 11.5px; }
+  body.print-internal .grand-total .srow { font-size: 15px; }
+  body.print-internal .notes { margin-top: 14px; }
+  body.print-internal .notes .pv { font-size: 14px; }
+  body.print-internal table.items tr { break-inside: avoid; }
   body.print-internal td.internal .pv { font-weight: 600; }
   body.print-internal .feelist { cursor: default; }
   body.print-mode.print-internal .col-qty { width: 5%; } body.print-mode.print-internal .col-item { width: 22%; }
@@ -295,6 +319,16 @@
 </div>
 
 <div class="page" id="page">
+  <div class="internal-head" aria-hidden="true">
+    <div class="ih-title"><b>SOUMISSION – COPIE INTERNE</b><span>Ne pas transmettre au client</span></div>
+    <div class="ih-grid">
+      <div><label>Client</label><span id="ihClient"></span></div>
+      <div><label>Projet</label><span id="ihProject"></span></div>
+      <div><label>N° de soumission</label><span id="ihNo"></span></div>
+      <div><label>Date</label><span id="ihDate"></span></div>
+      <div><label>Vendeur</label><span id="ihSeller"></span></div>
+    </div>
+  </div>
   <header class="top">
     <div>
       <div class="logo-box" id="logoBox">
@@ -936,6 +970,7 @@
     interne: { w: 11 - 0.9, h: (8.5 - 0.9) * 96 - 6, size: "letter landscape" }
   };
   var MIN_FIT = 0.5; // en deçà, on laisse le contenu continuer sur une 2e page
+  var MIN_FIT_INTERNE = 0.92; // copie interne : texte lisible d'abord, quitte à prendre 2 pages
   var savedTitle = null;
 
   function fmtDate(v) {
@@ -959,7 +994,15 @@
     var sheet = internal ? SHEETS.interne : SHEETS.client;
     var PRINT_WIDTH_IN = sheet.w, PRINT_HEIGHT_PX = sheet.h;
     $("pageSize").textContent = "@page { size: " + sheet.size + "; margin: 0.45in; }";
+    var minFit = internal ? MIN_FIT_INTERNE : MIN_FIT;
     refreshUi();
+    if (internal) {
+      $("ihClient").textContent = $("client").value || "—";
+      $("ihProject").textContent = $("project").value || "—";
+      $("ihNo").textContent = $("quoteNo").value || "—";
+      $("ihDate").textContent = fmtDate($("date").value) || "—";
+      $("ihSeller").textContent = $("seller").value || "—";
+    }
     buildPrintText();
     var page = $("page");
     page.style.setProperty("--fit", 1);
@@ -971,11 +1014,11 @@
     for (var i = 0; i < 4; i++) {
       page.style.width = (PRINT_WIDTH_IN / fit) + "in";
       var h = page.scrollHeight;
-      var next = Math.max(MIN_FIT, Math.min(1, PRINT_HEIGHT_PX / h));
+      var next = Math.max(minFit, Math.min(1, PRINT_HEIGHT_PX / h));
       if (Math.abs(next - fit) < 0.005) break;
       fit = next;
     }
-    if (fit < 1) fit = Math.max(MIN_FIT, fit - 0.005); // petite marge de sécurité
+    if (fit < 1) fit = Math.max(minFit, fit - 0.005); // petite marge de sécurité
     page.style.width = (PRINT_WIDTH_IN / fit) + "in";
     page.style.setProperty("--fit", fit.toFixed(3));
     savedTitle = document.title;
