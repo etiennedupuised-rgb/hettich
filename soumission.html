@@ -85,6 +85,19 @@
   table.items td textarea.pnote { font-size: 11px; font-style: italic; font-weight: 400; color: var(--muted);
     text-align: center; min-height: 1.5em; padding: 1px 4px; }
   table.items td textarea.pnote::placeholder { color: #c4c9cf; }
+  /* Note vendeur : interne (fond jaune comme coûtant / marge), jamais sur le PDF client */
+  table.items td textarea[data-f="sellernote"] { font-size: 12px; color: #6b5200; background: var(--internal);
+    border: 1px dashed var(--internal-line); margin-top: 2px; min-height: 1.6em; }
+  table.items td textarea[data-f="sellernote"]::placeholder { color: #b9a46a; font-style: italic; }
+  /* Cachée tant qu'elle est vide : le bouton 📝 l'ouvre */
+  table.items tr:not(.sn-open):not(.has-sn) td textarea[data-f="sellernote"] { display: none; }
+  td.act button[data-a="sn"] { font-size: 12px; opacity: .55; }
+  tr.has-sn td.act button[data-a="sn"] { opacity: 1; }
+  body.print-mode:not(.print-internal) .pv.pv-sellernote { display: none !important; }
+  body.print-internal .pv.pv-sellernote { font-size: 11px; color: #6b5200; background: var(--internal); padding: 1px 4px;
+    margin: 1px 0 3px; border-left: 2px solid #c99a1e; min-height: 0; }
+  body.print-internal .pv.pv-sellernote::before { content: "Note vendeur : "; font-weight: 700; }
+  body.print-internal .pv.pv-sellernote:empty { display: none; }
   table.items td textarea[data-f="info"] { font-size: 12px; font-style: italic; color: var(--muted); min-height: 1.6em; }
   table.items td textarea[data-f="info"]::placeholder { color: #c4c9cf; }
   td.calc input { color: var(--dark); font-weight: 700; }
@@ -94,7 +107,7 @@
   td.internal input.manual { font-style: italic; }
   .col-qty { width: 5%; } .col-item { width: 17%; } .col-code { width: 10%; } .col-dim { width: 10%; }
   .col-sqft { width: 7%; } .col-cost { width: 13%; } .col-marge { width: 7%; } .col-vm { width: 11%; }
-  .col-vu { width: 10%; } .col-tot { width: 10%; } .col-act { width: 118px; }
+  .col-vu { width: 10%; } .col-tot { width: 10%; } .col-act { width: 140px; }
   .hide-totals .col-item { width: 27%; }
   /* Bouton ↺ : revenir au calcul automatique (visible quand la case est modifiée à la main) */
   td.resettable { position: relative; }
@@ -445,7 +458,7 @@
   }
 
   // ---------- Lignes ----------
-  var FIELDS = ["qty", "item", "info", "code", "dim", "sqft", "cost", "marge", "vm", "vmnote", "vu", "vunote", "totnote"];
+  var FIELDS = ["qty", "item", "info", "sellernote", "code", "dim", "sqft", "cost", "marge", "vm", "vmnote", "vu", "vunote", "totnote"];
 
   var RESET = '<button type="button" class="reset no-print" data-a="reset" tabindex="-1" title="Revenir au calcul automatique">↺</button>';
   function rowTemplate() {
@@ -453,7 +466,8 @@
     tr.innerHTML =
       '<td class="num"><input data-f="qty" inputmode="decimal"></td>' +
       '<td><textarea data-f="item" rows="1"></textarea>' +
-        '<textarea data-f="info" rows="1" placeholder="Infos (s\'affiche sous l\'item dans le PDF)"></textarea></td>' +
+        '<textarea data-f="info" rows="1" placeholder="Infos (s\'affiche sous l\'item dans le PDF)"></textarea>' +
+        '<textarea data-f="sellernote" rows="1" placeholder="Note vendeur (interne, jamais sur le PDF client)"></textarea></td>' +
       '<td><input data-f="code"></td>' +
       '<td><input data-f="dim" placeholder="49 x 97"></td>' +
       '<td class="num internal resettable"><input data-f="sqft" inputmode="decimal" placeholder="vide">' + RESET + '</td>' +
@@ -467,6 +481,7 @@
       '<td class="num tot"><input data-f="tot" readonly tabindex="-1">' +
         '<textarea data-f="totnote" class="pnote" rows="1" placeholder="Note"></textarea></td>' +
       '<td class="act">' +
+        '<button type="button" data-a="sn" title="Note vendeur (interne, jamais sur le PDF client)">📝</button>' +
         '<button type="button" data-a="hide" title="Masquer cette ligne sur le PDF client (elle reste dans la soumission)">👁</button>' +
         '<button type="button" data-a="up" title="Monter">▲</button>' +
         '<button type="button" data-a="down" title="Descendre">▼</button>' +
@@ -576,10 +591,11 @@
     if (data.sqftManual) q(tr, "sqft").classList.add("manual");
     if (data.fees) setFees(tr, data.fees);
     if (data.hidden) setRowHidden(tr, true);
+    tr.classList.toggle("has-sn", !!(data.sellernote || "").trim());
     ["cost", "marge", "vm", "vu"].forEach(function (f) { formatField(q(tr, f)); });
     if (after) after.after(tr); else tbody.appendChild(tr);
     recalcRow(tr);
-    ["item", "info", "vmnote", "vunote", "totnote"].forEach(function (f) { autosize(q(tr, f)); });
+    ["item", "info", "sellernote", "vmnote", "vunote", "totnote"].forEach(function (f) { autosize(q(tr, f)); });
     return tr;
   }
 
@@ -649,7 +665,7 @@
     var tot = isFinite(qty) && isFinite(vu) ? qty * vu : NaN;
     q(tr, "tot").value = fmtD(tot);
     tr.dataset.total = isFinite(tot) ? tot : 0;
-    var blank = ["qty", "item", "info", "code", "dim", "vm", "vmnote", "vu", "vunote", "totnote"].every(function (f) { return !q(tr, f).value.trim(); });
+    var blank = ["qty", "item", "info", "sellernote", "code", "dim", "vm", "vmnote", "vu", "vunote", "totnote"].every(function (f) { return !q(tr, f).value.trim(); });
     tr.classList.toggle("blank", blank);
   }
 
@@ -680,6 +696,7 @@
 
   tbody.addEventListener("input", function (e) {
     var el = e.target, tr = el.closest("tr"), f = el.dataset.f;
+    if (f === "sellernote") tr.classList.toggle("has-sn", el.value.trim() !== "");
     // Saisie manuelle : la valeur est figée, même vide (bouton ↺ pour revenir au calcul)
     if (f === "sqft" || f === "vm" || f === "vu") el.classList.add("manual");
     // Un vendant / mille saisi a priorité : le vendant / unité redevient calculé
@@ -722,6 +739,13 @@
     if (a === "reset") { b.parentNode.querySelector("input").classList.remove("manual"); }
     if (a === "del") { if (feeRow === tr) closeFees(); tr.remove(); if (!tbody.rows.length) addRow(); }
     if (a === "dup") addRow(rowData(tr), tr);
+    if (a === "sn") {
+      var open = !tr.classList.contains("sn-open");
+      tr.classList.toggle("sn-open", open);
+      var ta = q(tr, "sellernote");
+      if (open) { autosize(ta); ta.focus(); }
+      return;
+    }
     if (a === "hide") setRowHidden(tr, !tr.classList.contains("row-hidden"));
     if (a === "up" && tr.previousElementSibling) tr.previousElementSibling.before(tr);
     if (a === "down" && tr.nextElementSibling) tr.nextElementSibling.after(tr);
