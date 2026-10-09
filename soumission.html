@@ -277,7 +277,7 @@
   <button id="btnFolder" title="Choisir le dossier où « Enregistrer » et « Ouvrir » s'ouvrent (ex. Documents\SOUMISSIONS)">Dossier…</button>
   <input type="file" id="fileOpen" accept=".json,application/json">
   <span class="spacer"></span>
-  <label class="chk" title="Colonne Total (quantité × vendant / unité) sur chaque ligne"><input type="checkbox" id="chkTotals" style="width:auto"> Totaux par ligne</label>
+  <label class="chk" title="Colonne Total (quantité × prix / unité) sur chaque ligne"><input type="checkbox" id="chkTotals" style="width:auto"> Totaux par ligne</label>
   <label class="chk" title="Sous-total et total de la soumission. Décochez quand la soumission présente plusieurs options : le total additionnerait des options qui s'excluent."><input type="checkbox" id="chkGrandTotal" style="width:auto" checked> Total de la soumission</label>
 </div>
 
@@ -321,10 +321,10 @@
           <th class="ctr">Code de produit</th>
           <th class="ctr">Dimensions</th>
           <th class="num ctr internal" title="Pieds carrés par unité : calculés à partir des dimensions, modifiables">Pi² / unité</th>
-          <th class="num internal">Coût</th>
+          <th class="num internal">Coûtant</th>
           <th class="num ctr internal">Marge %</th>
-          <th class="num ctr">Vendant / mille</th>
-          <th class="num ctr">Vendant / unité</th>
+          <th class="num ctr">Prix / mille</th>
+          <th class="num ctr">Prix / unité</th>
           <th class="num col-tot">Total</th>
           <th class="col-act"></th>
         </tr>
@@ -334,13 +334,13 @@
   </div>
   <div class="no-print add-row">
     <button id="btnAdd">+ Ajouter une ligne</button>
-    <div class="legend">Les colonnes en jaune (<b>Pi²</b>, <b>Coût</b>, <b>Marge</b>) ne s'impriment jamais. Vendant / mille = coût de revient ÷ (1 − marge), où le coût de revient = coût + frais avant marge (bouton <b>+ frais</b> sous la marge : surcharge carburant, transport, autres, en $ ou en %, chacun avant ou après la marge ; les frais après marge s'ajoutent au prix de vente).
+    <div class="legend">Les colonnes en jaune (<b>Pi²</b>, <b>Coûtant</b>, <b>Marge</b>) ne s'impriment jamais. Prix / mille = coût de revient ÷ (1 − marge), où le coût de revient = coût + frais avant marge (bouton <b>+ frais</b> sous la marge : surcharge carburant, transport, autres, en $ ou en %, chacun avant ou après la marge ; les frais après marge s'ajoutent au prix de vente).
       <b>Pi² / unité</b> : calculés à partir des dimensions (ex. <i>49 x 97</i>, <i>4' x 8'</i>, <i>2800 x 2070 mm</i>) et modifiables à la main.
-      Vendant / unité = vendant/mille × pi² ÷ 1000. Si la case Pi² est vide, le coût est un coût unitaire : le vendant / unité = coût ÷ (1 − marge) et aucun prix au mille n'est affiché (un vendant / mille entré à la main donne alors vendant/mille ÷ 1000).
-      Vous pouvez aussi entrer directement un vendant : la marge est alors calculée (en brun). Si un vendant / mille est entré, il a priorité sur le vendant / unité.
-      Si seul le vendant / unité est entré, aucun prix au mille n'est affiché et la marge est calculée avec le coût comme coût unitaire.
+      Prix / unité = prix/mille × pi² ÷ 1000. Si la case Pi² est vide, le coût est un coût unitaire : le prix / unité = coût ÷ (1 − marge) et aucun prix au mille n'est affiché (un prix / mille entré à la main donne alors prix/mille ÷ 1000).
+      Vous pouvez aussi entrer directement un prix : la marge est alors calculée (en brun). Si un prix / mille est entré, il a priorité sur le prix / unité.
+      Si seul le prix / unité est entré, aucun prix au mille n'est affiché et la marge est calculée avec le coût comme coût unitaire.
       Une case de prix ou de pi² modifiée à la main reste telle quelle, même vidée ; cliquez sur <b>↺</b> pour revenir au calcul automatique.
-      Si le vendant / mille est vidé, l'item est traité comme vendu à l'unité : le coût est un coût unitaire et le vendant / unité = coût ÷ (1 − marge).</div>
+      Si le prix / mille est vidé, l'item est traité comme vendu à l'unité : le coût est un coût unitaire et le prix / unité = coût ÷ (1 − marge).</div>
   </div>
   <div class="grand-total" id="summary"><div class="box">
     <div class="srow sub"><span class="lbl">Sous-total</span><b id="subTotal">0,00 $</b></div>
