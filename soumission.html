@@ -94,7 +94,7 @@
   td.internal input.manual { font-style: italic; }
   .col-qty { width: 5%; } .col-item { width: 17%; } .col-code { width: 10%; } .col-dim { width: 10%; }
   .col-sqft { width: 7%; } .col-cost { width: 13%; } .col-marge { width: 7%; } .col-vm { width: 11%; }
-  .col-vu { width: 10%; } .col-tot { width: 10%; } .col-act { width: 92px; }
+  .col-vu { width: 10%; } .col-tot { width: 10%; } .col-act { width: 118px; }
   .hide-totals .col-item { width: 27%; }
   /* Bouton ↺ : revenir au calcul automatique (visible quand la case est modifiée à la main) */
   td.resettable { position: relative; }
@@ -143,6 +143,17 @@
   #feePanel .btns button { padding: 5px 9px; font-size: 12px; }
   td.act button { border: none; background: none; color: var(--muted); padding: 3px 4px; }
   td.act button:hover { color: var(--danger); }
+  /* Ligne masquée sur le PDF client (options de fournisseurs non retenues) */
+  td.act button[data-a="hide"] { font-size: 13px; }
+  td.act button[data-a="hide"]:hover { color: var(--brand); }
+  tr.row-hidden td.act button[data-a="hide"] { color: var(--brand); }
+  tr.row-hidden td:not(.act) { opacity: .45; }
+  tr.row-hidden td:nth-child(2)::before { content: "Masqué sur le PDF client"; display: inline-block; margin: 2px 0 1px 5px;
+    padding: 0 6px; font-size: 10px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase;
+    color: #fff; background: var(--muted); border-radius: 3px; }
+  body.print-mode:not(.print-internal) tr.row-hidden { display: none !important; }
+  body.print-internal tr.row-hidden td:not(.act) { opacity: .5; }
+  body.print-internal tr.row-hidden td:nth-child(2)::before { content: "Non présentée au client"; margin-left: 0; }
   .hide-totals .col-tot, .hide-totals td.tot { display: none; }
   .add-row { margin-top: 8px; }
   /* Sommaire : sous-total, frais à la commande, total */
@@ -456,6 +467,7 @@
       '<td class="num tot"><input data-f="tot" readonly tabindex="-1">' +
         '<textarea data-f="totnote" class="pnote" rows="1" placeholder="Note"></textarea></td>' +
       '<td class="act">' +
+        '<button type="button" data-a="hide" title="Masquer cette ligne sur le PDF client (elle reste dans la soumission)">👁</button>' +
         '<button type="button" data-a="up" title="Monter">▲</button>' +
         '<button type="button" data-a="down" title="Descendre">▼</button>' +
         '<button type="button" data-a="dup" title="Dupliquer">⧉</button>' +
@@ -547,6 +559,14 @@
     b.title = sum ? "Frais (ap. = après marge) : " + sum + " (cliquer pour modifier)" : "Surcharge carburant, transport, autres frais";
   }
 
+  function setRowHidden(tr, hidden) {
+    tr.classList.toggle("row-hidden", hidden);
+    var b = tr.querySelector('button[data-a="hide"]');
+    b.textContent = hidden ? "🚫" : "👁";
+    b.title = hidden ? "Ligne masquée sur le PDF client : cliquer pour l'afficher de nouveau"
+                     : "Masquer cette ligne sur le PDF client (elle reste dans la soumission)";
+  }
+
   function addRow(data, after) {
     var tr = rowTemplate();
     data = data || {};
@@ -555,6 +575,7 @@
     if (data.vuManual) q(tr, "vu").classList.add("manual");
     if (data.sqftManual) q(tr, "sqft").classList.add("manual");
     if (data.fees) setFees(tr, data.fees);
+    if (data.hidden) setRowHidden(tr, true);
     ["cost", "marge", "vm", "vu"].forEach(function (f) { formatField(q(tr, f)); });
     if (after) after.after(tr); else tbody.appendChild(tr);
     recalcRow(tr);
@@ -635,7 +656,10 @@
   function recalcAll() {
     Array.prototype.forEach.call(tbody.rows, recalcRow);
     var sum = 0;
-    Array.prototype.forEach.call(tbody.rows, function (tr) { sum += Number(tr.dataset.total) || 0; });
+    // Les lignes masquées sur le PDF client ne comptent pas dans le sous-total
+    Array.prototype.forEach.call(tbody.rows, function (tr) {
+      if (!tr.classList.contains("row-hidden")) sum += Number(tr.dataset.total) || 0;
+    });
     // Frais sur la commande totale (visibles par le client)
     var fees = 0, hasFees = false;
     [["handling", "rowHandling"], ["fuel", "rowFuel"]].forEach(function (x) {
@@ -698,6 +722,7 @@
     if (a === "reset") { b.parentNode.querySelector("input").classList.remove("manual"); }
     if (a === "del") { if (feeRow === tr) closeFees(); tr.remove(); if (!tbody.rows.length) addRow(); }
     if (a === "dup") addRow(rowData(tr), tr);
+    if (a === "hide") setRowHidden(tr, !tr.classList.contains("row-hidden"));
     if (a === "up" && tr.previousElementSibling) tr.previousElementSibling.before(tr);
     if (a === "down" && tr.nextElementSibling) tr.nextElementSibling.after(tr);
     recalcAll(); save();
@@ -767,6 +792,7 @@
     d.vmManual = q(tr, "vm").classList.contains("manual");
     d.vuManual = q(tr, "vu").classList.contains("manual");
     d.sqftManual = q(tr, "sqft").classList.contains("manual");
+    if (tr.classList.contains("row-hidden")) d.hidden = true;
     var fees = getFees(tr); if (Object.keys(fees).length) d.fees = fees;
     return d;
   }
