@@ -74,7 +74,7 @@
   /* ---------- Tableau ---------- */
   table.items { width: 100%; border-collapse: collapse; margin-top: 14px; table-layout: fixed; }
   table.items th { background: var(--dark); border-bottom: 3px solid var(--brand); color: var(--brand-ink); font-size: 11px; text-transform: uppercase;
-    letter-spacing: .5px; font-weight: 600; padding: 7px 5px; text-align: left; }
+    letter-spacing: .5px; font-weight: 600; padding: 5px 5px; line-height: 1.2; text-align: left; }
   table.items td { border-bottom: 1px solid var(--line); padding: 2px 2px; vertical-align: top; }
   table.items tbody tr:nth-child(even) td { background: #faf8f7; }
   table.items .num, table.items .num input { text-align: right; }
@@ -275,7 +275,7 @@
   .internal-head label { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); font-weight: 700; }
   .internal-head .ih-grid span { font-size: 15px; font-weight: 700; overflow-wrap: anywhere; }
   body.print-internal table.items { margin-top: 4px; }
-  body.print-internal table.items th { font-size: 11.5px; padding: 6px 5px; }
+  body.print-internal table.items th { font-size: 11px; padding: 3px 4px; line-height: 1.15; }
   body.print-internal table.items td .pv { font-size: 14px; }
   body.print-internal table.items td .pv.pv-info, body.print-internal .pv.pv-vmnote,
   body.print-internal .pv.pv-vunote, body.print-internal .pv.pv-totnote { font-size: 12px; }
@@ -292,6 +292,10 @@
   body.print-mode.print-internal .col-marge { width: 6%; } body.print-mode.print-internal .col-vm { width: 10%; }
   body.print-mode.print-internal .col-vu { width: 10%; } body.print-mode.print-internal .col-tot { width: 10%; }
   body.print-mode.print-internal.hide-totals .col-item { width: 32%; }
+  /* En-têtes de colonnes plus bas à l'impression ; lignes non coupées entre deux pages */
+  body.print-mode table.items th { padding: 3px 4px; line-height: 1.15; font-size: 10.5px; }
+  body.print-mode table.items thead { display: table-header-group; }
+  body.print-mode table.items tr, body.print-mode .grand-total, body.print-mode .notes { break-inside: avoid; }
   @media print {
     html, body { background: #fff !important; overflow: visible !important; }
     .toolbar, .no-print { display: none !important; }
@@ -315,6 +319,9 @@
   <input type="file" id="fileOpen" accept=".json,application/json">
   <span class="spacer"></span>
   <label class="chk" title="Colonne Total (quantité × prix / unité) sur chaque ligne"><input type="checkbox" id="chkTotals" style="width:auto"> Totaux par ligne</label>
+  <label class="chk" title="Sur 1 page : le contenu est réduit au besoin pour tenir sur une feuille. Plusieurs pages : taille normale, la suite passe sur les pages suivantes (en-têtes de colonnes répétés).">Impression
+    <select id="selPages" style="font:inherit;border:1px solid var(--line);border-radius:4px;padding:3px 4px;background:#fff">
+      <option value="1">Sur 1 page</option><option value="n">Plusieurs pages</option></select></label>
   <label class="chk" title="Sous-total et total de la soumission. Décochez quand la soumission présente plusieurs options : le total additionnerait des options qui s'excluent."><input type="checkbox" id="chkGrandTotal" style="width:auto" checked> Total de la soumission</label>
 </div>
 
@@ -873,6 +880,7 @@
     HEADER.forEach(function (k) { if (d[k] != null) $(k).value = d[k]; });
     if (d.showTotals != null) $("chkTotals").checked = d.showTotals;
     if (d.showGrandTotal != null) $("chkGrandTotal").checked = d.showGrandTotal;
+    if (d.pages === "1" || d.pages === "n") $("selPages").value = d.pages;
     else if (d.showTotals != null) $("chkGrandTotal").checked = d.showTotals; // anciens fichiers
     closeFees();
     tbody.innerHTML = "";
@@ -909,7 +917,7 @@
     clearTimeout(saveTimer); saveTimer = null;
     var d = collect();
     var s = {}; SETTINGS.forEach(function (k) { s[k] = d[k]; });
-    s.showTotals = d.showTotals; s.showGrandTotal = d.showGrandTotal;
+    s.showTotals = d.showTotals; s.showGrandTotal = d.showGrandTotal; s.pages = $("selPages").value;
     store(SETTINGS_KEY, JSON.stringify(s));
   }
   function save() {
@@ -944,6 +952,7 @@
   });
   $("chkTotals").addEventListener("change", function () { refreshUi(); save(); });
   $("chkGrandTotal").addEventListener("change", function () { refreshUi(); save(); });
+  $("selPages").addEventListener("change", function () { save(); });
   $("btnAdd").addEventListener("click", function () { q(addRow(), "qty").focus(); save(); });
 
   function today() { var d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); }
@@ -970,7 +979,6 @@
     interne: { w: 11 - 0.9, h: (8.5 - 0.9) * 96 - 6, size: "letter landscape" }
   };
   var MIN_FIT = 0.5; // en deçà, on laisse le contenu continuer sur une 2e page
-  var MIN_FIT_INTERNE = 0.92; // copie interne : texte lisible d'abord, quitte à prendre 2 pages
   var savedTitle = null;
 
   function fmtDate(v) {
@@ -994,7 +1002,8 @@
     var sheet = internal ? SHEETS.interne : SHEETS.client;
     var PRINT_WIDTH_IN = sheet.w, PRINT_HEIGHT_PX = sheet.h;
     $("pageSize").textContent = "@page { size: " + sheet.size + "; margin: 0.45in; }";
-    var minFit = internal ? MIN_FIT_INTERNE : MIN_FIT;
+    // « Sur 1 page » : réduit au besoin (jusqu'à 50 %) ; « Plusieurs pages » : taille normale, suite sur les pages suivantes
+    var minFit = $("selPages").value === "n" ? 1 : MIN_FIT;
     refreshUi();
     if (internal) {
       $("ihClient").textContent = $("client").value || "—";
