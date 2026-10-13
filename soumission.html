@@ -333,6 +333,16 @@
   table.otable .o-type select { width: 100%; font: inherit; font-size: 12px; border: 1px solid var(--line); border-radius: 4px; padding: 2px; background: #fff; }
   table.otable .o-bo { display: flex; align-items: center; gap: 4px; font-size: 11px; margin-top: 3px; color: var(--muted); }
   table.otable .o-bo input { width: auto; }
+  table.otable .o-split { display: grid; grid-template-columns: 1fr 58px; gap: 4px; align-items: center; margin-top: 3px; font-size: 11px; color: var(--muted); }
+  table.otable .o-split input { border: 1px solid var(--line); background: #fff; text-align: center; padding: 1px 3px; font-size: 12px; }
+  .o-entry.o-entry-view { display: flex; align-items: center; gap: 6px; padding: 3px 6px; border: 1px solid var(--line); border-radius: 4px;
+    background: #fff; font-size: 12.5px; margin-bottom: 3px; }
+  .o-entry.o-entry-view span { flex: 1; min-width: 0; }
+  .o-entry.o-entry-view i { color: var(--muted); }
+  .o-entry.o-entry-view.is-planned { border-style: dashed; color: #1d4f86; }
+  .o-entry.o-entry-view button { border: none; background: none; padding: 1px 4px; color: var(--muted); }
+  .o-entry.o-entry-view button:hover { color: var(--ink); }
+  .o-entry button.o-ok { border: 1px solid var(--brand); color: #fff; background: var(--brand); border-radius: 4px; font-size: 11px; padding: 3px 6px; white-space: nowrap; }
   table.otable tr.is-stock td.cmd-only > * { display: none; }
   table.otable tr.is-stock td.cmd-only { background: #f6f5f3; }
   table.otable tr.is-stock td.cmd-only::after { content: "—"; display: block; text-align: center; color: #b8b8b8; }
@@ -346,7 +356,7 @@
   table.otable td.o-act button[data-oa="remove"]:hover { color: var(--danger); }
   table.otable tr.o-removed td { background: #f6f5f3; color: var(--muted); font-size: 12px; padding: 8px; }
   table.otable tr.o-removed button { font-size: 11px; padding: 1px 6px; }
-  .o-entry.o-entry-del { grid-template-columns: 140px 70px 120px 110px 1fr 26px; }
+  .o-entry.o-entry-del { grid-template-columns: 140px 70px 120px 110px 1fr 52px; }
   .o-entry select { font: inherit; font-size: 12px; border: 1px solid var(--line); border-radius: 4px; padding: 2px; background: #fff; }
   #printDoc .pd-planned { color: #1d4f86; font-style: italic; }
 
@@ -368,7 +378,7 @@
   table.otable tr.o-hist td { background: #faf9f7; padding: 4px 8px 8px; }
   .o-hist-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 24px; }
   .o-hist-grid h4 { margin: 2px 0 4px; font-size: 11px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); }
-  .o-entry { display: grid; grid-template-columns: 140px 80px 1fr 26px; gap: 4px; align-items: center; margin-bottom: 3px; }
+  .o-entry { display: grid; grid-template-columns: 140px 80px 1fr 52px; gap: 4px; align-items: center; margin-bottom: 3px; }
   .o-entry input { border: 1px solid var(--line); background: #fff; }
   .o-entry button { border: none; background: none; color: var(--muted); padding: 2px; }
   .o-entry button:hover { color: var(--danger); }
@@ -566,26 +576,19 @@
   <div class="o-table-wrap">
     <table class="otable" id="otable">
       <colgroup>
-        <col style="width:2.5%"><col style="width:14%"><col style="width:8.5%"><col style="width:8%"><col style="width:7%">
-        <col style="width:8%"><col style="width:8%"><col style="width:5%"><col style="width:6.5%"><col style="width:7%">
-        <col style="width:7.5%"><col style="width:4.5%"><col style="width:7%"><col style="width:9%"><col style="width:56px">
+        <col style="width:2.5%"><col style="width:16%"><col style="width:14%"><col style="width:8.5%"><col style="width:8.5%">
+        <col style="width:5.5%"><col style="width:7%"><col style="width:8%"><col style="width:9%"><col style="width:5%">
+        <col style="width:7.5%"><col style="width:8.5%"><col style="width:56px">
       </colgroup>
       <thead><tr>
-        <th>#</th><th>Item</th><th>Stock / sur commande</th><th>Fournisseur</th><th>PO fourn.</th><th>Date de commande</th>
+        <th>#</th><th>Item</th><th>Stock / sur commande</th><th>Date de commande</th>
         <th>Réception prévue</th><th>Qté projet</th><th>Prix / unité</th><th>Reçu</th><th>Livré</th><th>Reste</th><th>Statut</th><th>Notes</th><th></th>
       </tr></thead>
       <tbody id="obody"></tbody>
     </table>
   </div>
-  <p class="o-hint">Les items viennent de la soumission (les lignes masquées sur le PDF client ne sont pas reprises). Choisissez « Stock » pour un item tenu en inventaire (cochez « Back order » s'il faut finalement le commander). Utilisez « + Réception » et « + Livraison » pour chaque arrivage ou livraison, effectuée ou prévue ; le bouton ▾ affiche ou masque cet historique. Une ligne passe en rouge si la réception prévue est dépassée sans tout avoir reçu.</p>
+  <p class="o-hint">Les items viennent de la soumission (les lignes masquées sur le PDF client ne sont pas reprises). Choisissez « Stock » pour un item tenu en inventaire ; cochez « Back order » s'il en manque, et indiquez la quantité en stock et la quantité en BO (seule la quantité en BO est à recevoir). Utilisez « + Réception » et « + Livraison » pour chaque arrivage ou livraison, effectuée ou prévue ; le bouton ▾ affiche ou masque cet historique. Une ligne passe en rouge si la réception prévue est dépassée sans tout avoir reçu.</p>
 </div>
-<datalist id="supplierList">
-  <option value="Uniboard"><option value="Tafisa"><option value="Formica"><option value="Egger"><option value="Rehau">
-  <option value="AGT"><option value="Sublime"><option value="Kastamonu"><option value="Stevenswood"><option value="Holz in form">
-  <option value="Sm'art"><option value="Columbia"><option value="Husky"><option value="Canusa"><option value="Panoply">
-  <option value="Bois Aisé"><option value="Thomes"><option value="Brightwood"><option value="Garnica"><option value="Pg Woods">
-  <option value="Hettich"><option value="Marathon"><option value="Jowat"><option value="Dorus"><option value="Dollken">
-</datalist>
 <div id="printDoc"></div>
 <div id="feePanel" class="no-print" hidden>
   <h3>Frais de la ligne</h3>
@@ -1335,12 +1338,13 @@
   // ---------- Suivi de commande ----------
   // Une soumission acceptée passe en mode « commande ». Le suivi de chaque item est gardé
   // dans tr._order et enregistré dans le même .json que la soumission :
-  //   type ("commande" | "stock"), bo (stock tombé en back order), supplier, supplierPO,
+  //   type ("commande" | "stock"), bo (stock tombé en back order), stockQty / boQty (partage stock / BO),
   //   orderDate, etaDate, qtyOrdered (qté du projet), receipts [{date, qty, note}],
   //   deliveries [{date, qty, dn, state: "done" | "planned", note}], notes, removed.
   var currentMode = "soumission";
   var obody = $("obody");
   var openHist = new WeakSet(); // historiques dépliés (affichage seulement)
+  var editing = new WeakSet();  // réceptions / livraisons en cours de modification
 
   function esc(t) {
     return String(t == null ? "" : t).replace(/[&<>"']/g, function (c) {
@@ -1358,7 +1362,7 @@
   }
   function orderHasData(o) {
     if (!o) return false;
-    return ["type", "supplier", "supplierPO", "orderDate", "etaDate", "qtyOrdered", "notes"].some(function (k) { return (o[k] || "").trim(); }) ||
+    return ["type", "supplier", "supplierPO", "orderDate", "etaDate", "qtyOrdered", "stockQty", "boQty", "notes"].some(function (k) { return (o[k] || "").trim(); }) ||
       o.bo || o.removed || (o.receipts && o.receipts.length) || (o.deliveries && o.deliveries.length);
   }
   function sumEntries(list, filter) {
@@ -1377,22 +1381,31 @@
     return isFinite(n) ? n : parseNum(q(tr, "qty").value);
   }
   function unitPrice(tr) { return q(tr, "vu").value.trim(); }
+  // Quantité à recevoir du fournisseur : tout pour un item sur commande ; seulement la partie BO pour un item en stock
+  function boQty(tr) {
+    var o = tr._order || {}, Q = projectQty(tr);
+    var b = parseNum(o.boQty), sq = parseNum(o.stockQty);
+    if (isFinite(b)) return b;
+    if (isFinite(sq) && isFinite(Q)) return Math.max(0, Q - sq);
+    return Q;
+  }
+  function receiveTarget(tr) { var o = tr._order || {}; return isStock(o) ? (o.bo ? boQty(tr) : 0) : projectQty(tr); }
 
   // Statut calculé à partir des quantités, des dates et du type
   function orderStatus(tr) {
     var o = tr._order || {}, Q = projectQty(tr);
     var R = sumEntries(o.receipts), L = sumEntries(o.deliveries, isDone), P = sumEntries(o.deliveries, isPlanned);
-    var hasQ = isFinite(Q) && Q > 0, st;
+    var hasQ = isFinite(Q) && Q > 0, T = receiveTarget(tr), hasT = isFinite(T) && T > 0, st;
     if (hasQ && L >= Q) st = { k: "delivered", t: "Livré" };
     else if (L > 0) st = { k: "partdel", t: "Livré partiel" };
     else if (P > 0) st = { k: "planned", t: "Livraison prévue" };
     else if (!needsSupplier(o)) st = { k: "stock", t: "En stock" };
-    else if (hasQ && R >= Q) st = { k: "received", t: "Reçu" };
+    else if (hasT && R >= T) st = { k: "received", t: o.bo ? "BO reçu" : "Reçu" };
     else if (R > 0) st = { k: "partrec", t: "Reçu partiel" };
-    else if ((o.orderDate || "").trim() || (o.supplierPO || "").trim()) st = { k: "ordered", t: o.bo ? "BO commandé" : "Commandé" };
+    else if ((o.orderDate || "").trim()) st = { k: "ordered", t: o.bo ? "BO commandé" : "Commandé" };
     else st = { k: "todo", t: o.bo ? "BO à commander" : "À commander" };
-    st.late = !!(needsSupplier(o) && o.etaDate && o.etaDate < today() && !(hasQ && R >= Q) && st.k !== "delivered");
-    st.Q = Q; st.R = R; st.L = L; st.P = P;
+    st.late = !!(needsSupplier(o) && o.etaDate && o.etaDate < today() && !(hasT && R >= T) && st.k !== "delivered");
+    st.Q = Q; st.T = T; st.R = R; st.L = L; st.P = P;
     return st;
   }
   function soumRows() {
@@ -1406,16 +1419,27 @@
   function itemSub(tr) { return [q(tr, "code").value.trim(), q(tr, "dim").value.trim()].filter(Boolean).join(" · "); }
 
   function entryHtml(list, j, e) {
-    var h = '<div class="o-entry ' + (list === "deliveries" ? "o-entry-del" : "") + '" data-list="' + list + '" data-j="' + j + '">' +
-      '<input type="date" data-ek="date" value="' + esc(e.date) + '" aria-label="Date">' +
+    var del = list === "deliveries";
+    var h = '<div class="o-entry ' + (del ? "o-entry-del" : "") + '" data-list="' + list + '" data-j="' + j + '">';
+    if (!editing.has(e)) {
+      // Une fois entrée, l'information s'affiche en texte ; ✎ pour la modifier
+      var parts = [fmtShort(e.date) || "Date ?", "Qté " + (e.qty || "?")];
+      if (del && e.dn) parts.push("DN " + e.dn);
+      if (del) parts.push(isPlanned(e) ? "Prévue" : "Effectuée");
+      return '<div class="o-entry o-entry-view' + (del && isPlanned(e) ? " is-planned" : "") + '" data-list="' + list + '" data-j="' + j + '">' +
+        '<span>' + esc(parts.join(" · ")) + (e.note ? ' <i>— ' + esc(e.note) + '</i>' : "") + '</span>' +
+        '<button type="button" data-oa="editentry" title="Modifier">✎</button>' +
+        '<button type="button" data-oa="delentry" title="Supprimer">✕</button></div>';
+    }
+    h += '<input type="date" data-ek="date" value="' + esc(e.date) + '" aria-label="Date">' +
       '<input data-ek="qty" inputmode="decimal" value="' + esc(e.qty) + '" placeholder="Qté" aria-label="Quantité" style="text-align:center">';
-    if (list === "deliveries") {
+    if (del) {
       h += '<input data-ek="dn" value="' + esc(e.dn) + '" placeholder="N° de DN" aria-label="Numéro de DN">' +
         '<select data-ek="state" aria-label="État"><option value="done"' + (isDone(e) ? " selected" : "") + '>Effectuée</option>' +
         '<option value="planned"' + (isPlanned(e) ? " selected" : "") + '>Prévue</option></select>';
     }
     return h + '<input data-ek="note" value="' + esc(e.note) + '" placeholder="Note (transporteur, back order…)" aria-label="Note">' +
-      '<button type="button" data-oa="delentry" title="Retirer cette ligne">✕</button></div>';
+      '<button type="button" class="o-ok" data-oa="doneentry" title="Terminer">✓ OK</button></div>';
   }
   function renderOrderRow(tr, i) {
     var o = tr._order || (tr._order = {});
@@ -1430,9 +1454,11 @@
       '<td class="o-type"><select data-ok="type" aria-label="Stock ou sur commande">' +
         '<option value="commande"' + (stock ? "" : " selected") + '>Sur commande</option>' +
         '<option value="stock"' + (stock ? " selected" : "") + '>Stock</option></select>' +
-        (stock ? '<label class="o-bo"><input type="checkbox" data-ok="bo"' + (o.bo ? " checked" : "") + '> Back order</label>' : "") + '</td>' +
-      '<td class="cmd-only"><input data-ok="supplier" list="supplierList" value="' + esc(o.supplier) + '" placeholder="Fournisseur"></td>' +
-      '<td class="cmd-only"><input data-ok="supplierPO" value="' + esc(o.supplierPO) + '" placeholder="N° PO"></td>' +
+        (stock && o.bo ? '<div class="o-split"><span>Qté en stock</span><input data-ok="stockQty" inputmode="decimal" value="' + esc(o.stockQty) + '" placeholder="' +
+          esc(fmtQty(Math.max(0, projectQty(tr) - boQty(tr)))) + '"></div>' : "") +
+        (stock ? '<label class="o-bo"><input type="checkbox" data-ok="bo"' + (o.bo ? " checked" : "") + '> Back order</label>' : "") +
+        (stock && o.bo ? '<div class="o-split"><span>Qté en BO</span><input data-ok="boQty" inputmode="decimal" value="' + esc(o.boQty) + '" placeholder="' +
+          esc(fmtQty(boQty(tr))) + '"></div>' : "") + '</td>' +
       '<td class="cmd-only"><input type="date" data-ok="orderDate" value="' + esc(o.orderDate) + '"></td>' +
       '<td class="cmd-only"><input type="date" data-ok="etaDate" value="' + esc(o.etaDate) + '"></td>' +
       '<td><input data-ok="qtyOrdered" inputmode="decimal" value="' + esc(o.qtyOrdered) + '" placeholder="' + esc(q(tr, "qty").value) + '" style="text-align:center" title="Quantité totale du projet"></td>' +
@@ -1447,7 +1473,7 @@
           (openHist.has(tr) ? "▴" : "▾") + ' ' + nHist + '</button>' +
         '<button type="button" data-oa="remove" title="Retirer cet item du suivi (le client ne l\'achète pas chez nous)">✕</button></td>';
     var hist = document.createElement("tr"); hist.className = "o-hist"; hist._src = tr;
-    var h = '<td colspan="15"><div class="o-hist-grid">';
+    var h = '<td colspan="13"><div class="o-hist-grid">';
     if (needsSupplier(o)) {
       h += '<div><h4>Réceptions du fournisseur</h4>';
       o.receipts.forEach(function (e, j) { h += entryHtml("receipts", j, e); });
@@ -1466,7 +1492,7 @@
   function updateOrderRow(main) {
     var tr = main._src, st = orderStatus(tr);
     var Qt = isFinite(st.Q) ? fmtQty(st.Q) : "?";
-    main.querySelector('[data-out="rec"]').textContent = fmtQty(st.R) + " / " + Qt;
+    main.querySelector('[data-out="rec"]').textContent = fmtQty(st.R) + " / " + (isFinite(st.T) ? fmtQty(st.T) : "?");
     main.querySelector('[data-out="del"]').innerHTML = esc(fmtQty(st.L) + " / " + Qt) +
       (st.P ? '<div class="o-planned">+ ' + esc(fmtQty(st.P)) + ' prévu</div>' : "");
     main.querySelector('[data-out="rest"]').textContent = isFinite(st.Q) ? fmtQty(Math.max(0, st.Q - st.L)) : "";
@@ -1493,11 +1519,11 @@
     obody.innerHTML = "";
     var rows = orderRows();
     rows.forEach(renderOrderRow);
-    if (!rows.length) obody.innerHTML = '<tr><td colspan="15" class="o-empty" style="padding:14px">Aucun item : ajoutez des lignes dans l\'onglet Soumission.</td></tr>';
+    if (!rows.length) obody.innerHTML = '<tr><td colspan="13" class="o-empty" style="padding:14px">Aucun item : ajoutez des lignes dans l\'onglet Soumission.</td></tr>';
     var gone = removedRows();
     if (gone.length) {
       var tr = document.createElement("tr"); tr.className = "o-removed";
-      tr.innerHTML = '<td colspan="15"><b>Retirés du suivi :</b> ' + gone.map(function (r, j) {
+      tr.innerHTML = '<td colspan="13"><b>Retirés du suivi :</b> ' + gone.map(function (r, j) {
         return esc(itemLabel(r)) + ' <button type="button" data-oa="restore" data-k="' + j + '">Rétablir</button>';
       }).join(" · ") + '</td>';
       obody.appendChild(tr);
@@ -1507,6 +1533,7 @@
     updateOrderSummary();
   }
 
+  function main0(row) { return row.classList.contains("o-row") ? row : row.previousElementSibling; }
   obody.addEventListener("input", function (e) {
     var el = e.target, row = el.closest("tr"), tr = row && row._src; if (!tr) return;
     var o = tr._order;
@@ -1518,6 +1545,11 @@
     save();
     // Le type (stock / sur commande / BO) change les colonnes : on redessine
     if (el.dataset.ok === "type" || el.dataset.ok === "bo") { renderOrder(); return; }
+    if (el.dataset.ok === "stockQty" || el.dataset.ok === "boQty") {
+      // Les deux quantités se complètent : on met à jour l'indication de l'autre case
+      var other = main0(row).querySelector('[data-ok="' + (el.dataset.ok === "boQty" ? "stockQty" : "boQty") + '"]');
+      if (other) other.placeholder = fmtQty(el.dataset.ok === "boQty" ? Math.max(0, projectQty(tr) - boQty(tr)) : boQty(tr));
+    }
     var main = row.classList.contains("o-row") ? row : row.previousElementSibling;
     updateOrderRow(main); updateOrderSummary();
   });
@@ -1543,15 +1575,21 @@
     if (b.dataset.oa === "add") {
       var st = orderStatus(tr), list = b.dataset.list;
       // Quantité proposée : ce qui reste à recevoir / à livrer
-      var left = list === "receipts" ? st.Q - st.R : st.Q - st.L - st.P;
+      var left = list === "receipts" ? st.T - st.R : st.Q - st.L - st.P;
       var entry = { date: today(), qty: isFinite(left) && left > 0 ? fmtQty(left) : "", note: "" };
       if (list === "deliveries") { entry.dn = ""; entry.state = "done"; }
       o[list].push(entry);
+      editing.add(entry); // nouvelle entrée : en modification jusqu'à « OK »
       openHist.add(tr);
     }
     if (b.dataset.oa === "delentry") {
       var ent = b.closest(".o-entry");
+      if (!confirm("Supprimer cette ligne ?")) return;
       o[ent.dataset.list].splice(+ent.dataset.j, 1);
+    }
+    if (b.dataset.oa === "editentry" || b.dataset.oa === "doneentry") {
+      var en = b.closest(".o-entry"), obj = o[en.dataset.list][+en.dataset.j];
+      if (b.dataset.oa === "editentry") editing.add(obj); else editing.delete(obj);
     }
     renderOrder(); save();
   });
@@ -1587,7 +1625,12 @@
     return new Date(v + "T12:00:00").toLocaleDateString("fr-CA", { day: "numeric", month: "short", year: "numeric" });
   }
   function pdField(label, val) { return '<div><label>' + label + '</label><span>' + esc(val || "—") + '</span></div>'; }
-  function typeTxt(o) { return isStock(o) ? (o.bo ? "Stock – back order" : "Stock") : "Sur commande"; }
+  function typeTxt(o, tr) {
+    if (!isStock(o)) return "Sur commande";
+    if (!o.bo) return "Stock";
+    var b = boQty(tr), Q = projectQty(tr);
+    return "Stock " + fmtQty(Math.max(0, Q - b)) + " · BO " + fmtQty(b);
+  }
   function deliveriesTxt(o) {
     var list = (o.deliveries || []).slice().sort(function (a, b) { return (a.date || "").localeCompare(b.date || ""); });
     if (!list.length) return '<span class="small">Aucune livraison inscrite</span>';
@@ -1603,7 +1646,7 @@
       var o = tr._order || {}, st = orderStatus(tr);
       body += '<tr><td><b>' + esc(itemLabel(tr)) + '</b>' + (itemSub(tr) ? '<div class="small">' + esc(itemSub(tr)) + '</div>' : "") +
         (q(tr, "info").value.trim() ? '<div class="small">' + esc(q(tr, "info").value) + '</div>' : "") + '</td>' +
-        '<td class="c b">' + fmtQty(st.Q) + '</td><td class="c">' + typeTxt(o) + '</td>' +
+        '<td class="c b">' + fmtQty(st.Q) + '</td><td class="c">' + typeTxt(o, tr) + '</td>' +
         '<td class="c b">' + esc(unitPrice(tr)) + '</td>' +
         '<td class="hist">' + deliveriesTxt(o) + '</td>' +
         '<td class="c b">' + fmtQty(Math.max(0, st.Q - st.L)) + '</td></tr>';
@@ -1630,11 +1673,10 @@
       var o = tr._order || {}, st = orderStatus(tr), sup = needsSupplier(o);
       body += '<tr><td class="c">' + (i + 1) + '</td><td><b>' + esc(itemLabel(tr)) + '</b><div class="small">' + esc(itemSub(tr)) + '</div>' +
         (q(tr, "sellernote").value.trim() ? '<div class="small">Note vendeur : ' + esc(q(tr, "sellernote").value) + '</div>' : "") + '</td>' +
-        '<td class="c">' + typeTxt(o) + '</td>' +
-        '<td>' + (sup ? esc(o.supplier) : "") + '</td><td class="c">' + (sup ? esc(o.supplierPO) : "") + '</td>' +
+        '<td class="c">' + typeTxt(o, tr) + '</td>' +
         '<td class="c">' + (sup ? esc(fmtShort(o.orderDate)) : "") + '</td><td class="c">' + (sup ? esc(fmtShort(o.etaDate)) : "") + '</td>' +
         '<td class="c b">' + fmtQty(st.Q) + '</td><td class="c">' + esc(unitPrice(tr)) + '</td>' +
-        '<td>' + (sup ? '<div class="b c">' + fmtQty(st.R) + '</div><div class="hist">' + histTxt(o.receipts) + '</div>' : "") + '</td>' +
+        '<td>' + (sup ? '<div class="b c">' + fmtQty(st.R) + " / " + fmtQty(st.T) + '</div><div class="hist">' + histTxt(o.receipts) + '</div>' : "") + '</td>' +
         '<td><div class="b c">' + fmtQty(st.L) + (st.P ? ' <span class="small">(+' + fmtQty(st.P) + ' prévu)</span>' : "") + '</div><div class="hist">' + histTxt(o.deliveries, true) + '</div></td>' +
         '<td class="c b">' + fmtQty(Math.max(0, st.Q - st.L)) + '</td>' +
         '<td class="c"><span class="st st-' + st.k + '">' + st.t + '</span>' + (st.late ? '<br><span class="st st-late">En retard</span>' : "") + '</td>' +
@@ -1647,9 +1689,9 @@
       pdField("Date d'acceptation", oh.acceptDate ? fmtDate(oh.acceptDate) : "") + pdField("Livraison demandée", oh.wantedDate ? fmtDate(oh.wantedDate) : "") +
       pdField("Contact au chantier", oh.siteContact) + pdField("Vendeur", $("seller").value) + '</div>' +
       (oh.shipAddr ? '<div class="pd-grid" style="grid-template-columns:1fr">' + pdField("Adresse de livraison", oh.shipAddr) + '</div>' : "") +
-      '<table style="table-layout:fixed"><thead><tr><th style="width:3%">#</th><th style="width:13%">Item</th><th style="width:7%">Type</th><th style="width:8%">Fournis&shy;seur</th><th style="width:7%">PO fourn.</th>' +
-      '<th style="width:6%">Date de commande</th><th style="width:7%">Réception prévue</th><th style="width:5%">Qté projet</th><th style="width:6%">Prix / unité</th><th style="width:9%">Reçu</th>' +
-      '<th style="width:11%">Livré</th><th style="width:5%">Reste</th><th style="width:7%">Statut</th><th style="width:6%">Notes</th></tr></thead><tbody>' + body + '</tbody></table>' +
+      '<table style="table-layout:fixed"><thead><tr><th style="width:3%">#</th><th style="width:17%">Item</th><th style="width:9%">Type</th>' +
+      '<th style="width:7%">Date de commande</th><th style="width:7%">Réception prévue</th><th style="width:5%">Qté projet</th><th style="width:6%">Prix / unité</th><th style="width:11%">Reçu</th>' +
+      '<th style="width:13%">Livré</th><th style="width:5%">Reste</th><th style="width:8%">Statut</th><th style="width:9%">Notes</th></tr></thead><tbody>' + body + '</tbody></table>' +
       (oh.notes ? '<div class="pd-notes"><h3>Notes de suivi</h3>' + esc(oh.notes) + '</div>' : "");
   }
   var orderTitle = null;
