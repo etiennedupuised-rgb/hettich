@@ -1425,7 +1425,7 @@
       // Une fois entrée, l'information s'affiche en texte ; ✎ pour la modifier
       var parts = [fmtShort(e.date) || "Date ?", "Qté " + (e.qty || "?")];
       if (del && e.dn) parts.push("DN " + e.dn);
-      if (del) parts.push(isPlanned(e) ? "Prévue" : "Effectuée");
+      if (del) parts.push(isPlanned(e) ? "Prévue" : (e.auto ? "Effectuée (auto, date passée)" : "Effectuée"));
       return '<div class="o-entry o-entry-view' + (del && isPlanned(e) ? " is-planned" : "") + '" data-list="' + list + '" data-j="' + j + '">' +
         '<span>' + esc(parts.join(" · ")) + (e.note ? ' <i>— ' + esc(e.note) + '</i>' : "") + '</span>' +
         '<button type="button" data-oa="editentry" title="Modifier">✎</button>' +
@@ -1511,7 +1511,20 @@
     if (w) h += '<span class="chip st-todo">Livraison demandée : ' + esc(fmtDate(w)) + '</span>';
     $("oSummary").innerHTML = h;
   }
+  // Livraison prévue dont la date est dépassée : passe automatiquement à « Effectuée »
+  // (sauf si vous avez vous-même remis « Prévue » sur une date passée : e.lock)
+  function autoCompleteDeliveries() {
+    var changed = false, t = today();
+    orderRows().forEach(function (tr) {
+      ((tr._order || {}).deliveries || []).forEach(function (e) {
+        if (isPlanned(e) && e.date && e.date < t && !e.lock && !editing.has(e)) { e.state = "done"; e.auto = true; changed = true; }
+      });
+    });
+    if (changed) save();
+    return changed;
+  }
   function renderOrder() {
+    autoCompleteDeliveries();
     $("oClient").textContent = $("client").value || "—";
     $("oProject").textContent = $("project").value || "—";
     $("oNo").textContent = $("quoteNo").value || "—";
@@ -1540,7 +1553,13 @@
     if (el.dataset.ok === "bo") o.bo = el.checked;
     else if (el.dataset.ok) o[el.dataset.ok] = el.value;
     var ent = el.closest(".o-entry");
-    if (ent && el.dataset.ek) o[ent.dataset.list][+ent.dataset.j][el.dataset.ek] = el.value;
+    if (ent && el.dataset.ek) {
+      var en0 = o[ent.dataset.list][+ent.dataset.j];
+      en0[el.dataset.ek] = el.value;
+      // Choix manuel de l'état : on le respecte (plus de passage automatique) ; une date changée relance l'automatisme
+      if (el.dataset.ek === "state") { en0.auto = false; en0.lock = el.value === "planned" && en0.date && en0.date < today(); }
+      if (el.dataset.ek === "date") { en0.lock = false; en0.auto = false; }
+    }
     if (el.tagName === "TEXTAREA") autosize(el);
     save();
     // Le type (stock / sur commande / BO) change les colonnes : on redessine
@@ -1696,6 +1715,7 @@
   }
   var orderTitle = null;
   function printOrder(kind) {
+    autoCompleteDeliveries();
     var doc = $("printDoc");
     doc.innerHTML = kind === "client" ? buildClientReport() : buildTrackingSheet();
     $("pageSize").textContent = "@page { size: letter " + (kind === "client" ? "portrait" : "landscape") + "; margin: 0.45in; }";
