@@ -349,6 +349,7 @@
   table.otable .o-price { font-size: 13px; }
   table.otable .st, #printDoc .st { white-space: normal; text-align: center; line-height: 1.2; }
   table.otable .o-planned { font-size: 11px; font-weight: 600; color: #1d4f86; }
+  table.otable .o-plan { color: #1d4f86; }
   table.otable td.o-act { white-space: nowrap; text-align: center; }
   table.otable td.o-act button { border: none; background: none; padding: 3px 4px; color: var(--muted); font-size: 12px; }
   table.otable td.o-act button[data-oa="hist"] { border: 1px solid var(--line); border-radius: 4px; }
@@ -412,7 +413,8 @@
   #printDoc td { border-bottom: 1px solid var(--line); padding: 4px; vertical-align: top; }
   #printDoc tr { break-inside: avoid; }
   #printDoc tbody tr:nth-child(even) td { background: #faf8f7; }
-  #printDoc .c { text-align: center; } #printDoc .b { font-weight: 700; }
+  #printDoc .c { text-align: center; }
+  #printDoc .nw { white-space: nowrap; font-size: 11.5px; } #printDoc .b { font-weight: 700; }
   #printDoc .small { font-size: 11px; color: var(--muted); }
   #printDoc .hist { font-size: 11px; line-height: 1.35; }
   #printDoc .pd-notes { margin-top: 12px; border: 1px solid var(--line); border-left: 4px solid var(--brand); padding: 8px 10px; background: var(--soft); white-space: pre-line; }
@@ -576,13 +578,13 @@
   <div class="o-table-wrap">
     <table class="otable" id="otable">
       <colgroup>
-        <col style="width:2.5%"><col style="width:16%"><col style="width:14%"><col style="width:8.5%"><col style="width:8.5%">
-        <col style="width:5.5%"><col style="width:7%"><col style="width:8%"><col style="width:9%"><col style="width:5%">
-        <col style="width:7.5%"><col style="width:8.5%"><col style="width:56px">
+        <col style="width:2.5%"><col style="width:13%"><col style="width:12.5%"><col style="width:8%"><col style="width:8%">
+        <col style="width:5%"><col style="width:6.5%"><col style="width:6%"><col style="width:7%"><col style="width:7%">
+        <col style="width:5%"><col style="width:5%"><col style="width:7%"><col style="width:7.5%"><col style="width:56px">
       </colgroup>
       <thead><tr>
         <th>#</th><th>Item</th><th>Stock / sur commande</th><th>Date de commande</th>
-        <th>Réception prévue</th><th>Qté projet</th><th>Prix / unité</th><th>Reçu</th><th>Livré</th><th>Reste</th><th>Statut</th><th>Notes</th><th></th>
+        <th>Réception prévue</th><th>Qté projet</th><th>Prix / mille</th><th>Prix / unité</th><th>Reçu</th><th>Livrée</th><th>Prévue</th><th>Reste</th><th>Statut</th><th>Notes</th><th></th>
       </tr></thead>
       <tbody id="obody"></tbody>
     </table>
@@ -1406,6 +1408,7 @@
     else st = { k: "todo", t: o.bo ? "BO à commander" : "À commander" };
     st.late = !!(needsSupplier(o) && o.etaDate && o.etaDate < today() && !(hasT && R >= T) && st.k !== "delivered");
     st.Q = Q; st.T = T; st.R = R; st.L = L; st.P = P;
+    st.Rest = isFinite(Q) ? Math.max(0, Q - L - P) : NaN; // reste à livrer, sans compter ce qui est déjà prévu
     return st;
   }
   function soumRows() {
@@ -1462,9 +1465,11 @@
       '<td class="cmd-only"><input type="date" data-ok="orderDate" value="' + esc(o.orderDate) + '"></td>' +
       '<td class="cmd-only"><input type="date" data-ok="etaDate" value="' + esc(o.etaDate) + '"></td>' +
       '<td><input data-ok="qtyOrdered" inputmode="decimal" value="' + esc(o.qtyOrdered) + '" placeholder="' + esc(q(tr, "qty").value) + '" style="text-align:center" title="Quantité totale du projet"></td>' +
+      '<td class="qty-line o-price">' + esc(q(tr, "vm").value.trim()) + '</td>' +
       '<td class="qty-line o-price">' + esc(unitPrice(tr)) + '</td>' +
       '<td class="cmd-only"><div class="qty-line" data-out="rec"></div><button type="button" class="addbtn" data-oa="add" data-list="receipts">+ Réception</button></td>' +
       '<td><div class="qty-line" data-out="del"></div><button type="button" class="addbtn" data-oa="add" data-list="deliveries">+ Livraison</button></td>' +
+      '<td class="qty-line o-plan" data-out="plan"></td>' +
       '<td class="qty-line" data-out="rest"></td>' +
       '<td class="num" data-out="st"></td>' +
       '<td><textarea data-ok="notes" rows="1" placeholder="Notes">' + esc(o.notes) + '</textarea></td>' +
@@ -1473,7 +1478,7 @@
           (openHist.has(tr) ? "▴" : "▾") + ' ' + nHist + '</button>' +
         '<button type="button" data-oa="remove" title="Retirer cet item du suivi (le client ne l\'achète pas chez nous)">✕</button></td>';
     var hist = document.createElement("tr"); hist.className = "o-hist"; hist._src = tr;
-    var h = '<td colspan="13"><div class="o-hist-grid">';
+    var h = '<td colspan="15"><div class="o-hist-grid">';
     if (needsSupplier(o)) {
       h += '<div><h4>Réceptions du fournisseur</h4>';
       o.receipts.forEach(function (e, j) { h += entryHtml("receipts", j, e); });
@@ -1493,9 +1498,9 @@
     var tr = main._src, st = orderStatus(tr);
     var Qt = isFinite(st.Q) ? fmtQty(st.Q) : "?";
     main.querySelector('[data-out="rec"]').textContent = fmtQty(st.R) + " / " + (isFinite(st.T) ? fmtQty(st.T) : "?");
-    main.querySelector('[data-out="del"]').innerHTML = esc(fmtQty(st.L) + " / " + Qt) +
-      (st.P ? '<div class="o-planned">+ ' + esc(fmtQty(st.P)) + ' prévu</div>' : "");
-    main.querySelector('[data-out="rest"]').textContent = isFinite(st.Q) ? fmtQty(Math.max(0, st.Q - st.L)) : "";
+    main.querySelector('[data-out="del"]').textContent = fmtQty(st.L);
+    main.querySelector('[data-out="plan"]').textContent = st.P ? fmtQty(st.P) : "0";
+    main.querySelector('[data-out="rest"]').textContent = isFinite(st.Q) ? fmtQty(st.Rest) : "";
     main.querySelector('[data-out="st"]').innerHTML = '<span class="st st-' + st.k + '">' + st.t + '</span>' +
       (st.late ? '<br><span class="st st-late" style="margin-top:3px">En retard</span>' : "");
     main.classList.toggle("late", st.late);
@@ -1532,11 +1537,11 @@
     obody.innerHTML = "";
     var rows = orderRows();
     rows.forEach(renderOrderRow);
-    if (!rows.length) obody.innerHTML = '<tr><td colspan="13" class="o-empty" style="padding:14px">Aucun item : ajoutez des lignes dans l\'onglet Soumission.</td></tr>';
+    if (!rows.length) obody.innerHTML = '<tr><td colspan="15" class="o-empty" style="padding:14px">Aucun item : ajoutez des lignes dans l\'onglet Soumission.</td></tr>';
     var gone = removedRows();
     if (gone.length) {
       var tr = document.createElement("tr"); tr.className = "o-removed";
-      tr.innerHTML = '<td colspan="13"><b>Retirés du suivi :</b> ' + gone.map(function (r, j) {
+      tr.innerHTML = '<td colspan="15"><b>Retirés du suivi :</b> ' + gone.map(function (r, j) {
         return esc(itemLabel(r)) + ' <button type="button" data-oa="restore" data-k="' + j + '">Rétablir</button>';
       }).join(" · ") + '</td>';
       obody.appendChild(tr);
@@ -1668,7 +1673,7 @@
         '<td class="c b">' + fmtQty(st.Q) + '</td><td class="c">' + typeTxt(o, tr) + '</td>' +
         '<td class="c b">' + esc(unitPrice(tr)) + '</td>' +
         '<td class="hist">' + deliveriesTxt(o) + '</td>' +
-        '<td class="c b">' + fmtQty(Math.max(0, st.Q - st.L)) + '</td></tr>';
+        '<td class="c b">' + fmtQty(st.Rest) + '</td></tr>';
     });
     if (!body) body = '<tr><td colspan="6" class="c small" style="padding:12px">Aucun item.</td></tr>';
     return '<div class="pd-top"><div><img src="' + logoImg.src + '" alt=""><div class="pd-company">' + esc($("company").value) + '</div></div>' +
@@ -1676,7 +1681,7 @@
       '<div class="pd-grid">' + pdField("Client", $("client").value) + pdField("Projet", $("project").value) + pdField("N° de PO du client", oh.clientPO) +
       pdField("Adresse de livraison", oh.shipAddr) + pdField("Contact au chantier", oh.siteContact) + pdField("Vendeur", $("seller").value) + '</div>' +
       '<table style="table-layout:fixed"><thead><tr><th style="width:30%">Item</th><th style="width:9%">Qté totale du projet</th><th style="width:11%">Stock / sur commande</th>' +
-      '<th style="width:10%">Prix / unité</th><th style="width:30%">Livraisons (date · qté · DN)</th><th style="width:10%">Qté restante</th></tr></thead><tbody>' + body + '</tbody></table>' +
+      '<th style="width:10%">Prix / unité</th><th style="width:30%">Livraisons (date · qté · DN)</th><th style="width:10%">Qté restante (non prévue)</th></tr></thead><tbody>' + body + '</tbody></table>' +
       '<p class="small" style="margin-top:8px">Les dates des livraisons prévues sont données à titre indicatif et peuvent changer.</p>';
   }
   function histTxt(list, withDn) {
@@ -1694,10 +1699,10 @@
         (q(tr, "sellernote").value.trim() ? '<div class="small">Note vendeur : ' + esc(q(tr, "sellernote").value) + '</div>' : "") + '</td>' +
         '<td class="c">' + typeTxt(o, tr) + '</td>' +
         '<td class="c">' + (sup ? esc(fmtShort(o.orderDate)) : "") + '</td><td class="c">' + (sup ? esc(fmtShort(o.etaDate)) : "") + '</td>' +
-        '<td class="c b">' + fmtQty(st.Q) + '</td><td class="c">' + esc(unitPrice(tr)) + '</td>' +
+        '<td class="c b">' + fmtQty(st.Q) + '</td><td class="c nw">' + esc(q(tr, "vm").value.trim()) + '</td><td class="c nw">' + esc(unitPrice(tr)) + '</td>' +
         '<td>' + (sup ? '<div class="b c">' + fmtQty(st.R) + " / " + fmtQty(st.T) + '</div><div class="hist">' + histTxt(o.receipts) + '</div>' : "") + '</td>' +
-        '<td><div class="b c">' + fmtQty(st.L) + (st.P ? ' <span class="small">(+' + fmtQty(st.P) + ' prévu)</span>' : "") + '</div><div class="hist">' + histTxt(o.deliveries, true) + '</div></td>' +
-        '<td class="c b">' + fmtQty(Math.max(0, st.Q - st.L)) + '</td>' +
+        '<td><div class="b c">' + fmtQty(st.L) + '</div><div class="hist">' + histTxt(o.deliveries, true) + '</div></td>' +
+        '<td class="c b">' + fmtQty(st.P) + '</td><td class="c b">' + fmtQty(st.Rest) + '</td>' +
         '<td class="c"><span class="st st-' + st.k + '">' + st.t + '</span>' + (st.late ? '<br><span class="st st-late">En retard</span>' : "") + '</td>' +
         '<td class="small" style="white-space:pre-line">' + esc(o.notes) + '</td></tr>';
     });
@@ -1708,9 +1713,9 @@
       pdField("Date d'acceptation", oh.acceptDate ? fmtDate(oh.acceptDate) : "") + pdField("Livraison demandée", oh.wantedDate ? fmtDate(oh.wantedDate) : "") +
       pdField("Contact au chantier", oh.siteContact) + pdField("Vendeur", $("seller").value) + '</div>' +
       (oh.shipAddr ? '<div class="pd-grid" style="grid-template-columns:1fr">' + pdField("Adresse de livraison", oh.shipAddr) + '</div>' : "") +
-      '<table style="table-layout:fixed"><thead><tr><th style="width:3%">#</th><th style="width:17%">Item</th><th style="width:9%">Type</th>' +
-      '<th style="width:7%">Date de commande</th><th style="width:7%">Réception prévue</th><th style="width:5%">Qté projet</th><th style="width:6%">Prix / unité</th><th style="width:11%">Reçu</th>' +
-      '<th style="width:13%">Livré</th><th style="width:5%">Reste</th><th style="width:8%">Statut</th><th style="width:9%">Notes</th></tr></thead><tbody>' + body + '</tbody></table>' +
+      '<table style="table-layout:fixed"><thead><tr><th style="width:3%">#</th><th style="width:12.5%">Item</th><th style="width:8%">Type</th>' +
+      '<th style="width:7%">Date de commande</th><th style="width:7%">Réception prévue</th><th style="width:5%">Qté projet</th><th style="width:7%">Prix / mille</th><th style="width:6.5%">Prix / unité</th><th style="width:10%">Reçu</th>' +
+      '<th style="width:11.5%">Livrée</th><th style="width:5%">Prévue</th><th style="width:5%">Reste</th><th style="width:7%">Statut</th><th style="width:5.5%">Notes</th></tr></thead><tbody>' + body + '</tbody></table>' +
       (oh.notes ? '<div class="pd-notes"><h3>Notes de suivi</h3>' + esc(oh.notes) + '</div>' : "");
   }
   var orderTitle = null;
