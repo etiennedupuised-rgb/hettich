@@ -82,6 +82,9 @@
   table.items td.internal { background: var(--internal) !important; }
   table.items td textarea { min-height: 1.9em; padding: 3px 5px; }
   /* Note sous les vendants (frais supplémentaires, etc.) : visible dans le PDF, sous le prix */
+  .vmexact { font-size: 10.5px; line-height: 1.25; color: #8a6500; text-align: center; padding: 1px 2px 2px; }
+  .vmexact:empty { display: none; }
+  body.print-mode:not(.print-internal) .vmexact { display: none !important; }
   table.items td textarea.pnote { font-size: 11px; font-style: italic; font-weight: 400; color: var(--muted);
     text-align: center; min-height: 1.5em; padding: 1px 4px; }
   table.items td textarea.pnote::placeholder { color: #c4c9cf; }
@@ -520,7 +523,7 @@
   </div>
   <div class="no-print add-row">
     <button id="btnAdd">+ Ajouter une ligne</button>
-    <div class="legend">Les colonnes en jaune (<b>Pi²</b>, <b>Coûtant</b>, <b>Marge</b>) ne s'impriment jamais. Prix / mille = coût de revient ÷ (1 − marge), où le coût de revient = coût + frais avant marge (bouton <b>+ frais</b> sous la marge : surcharge carburant, transport, autres, en $ ou en %, chacun avant ou après la marge ; les frais après marge s'ajoutent au prix de vente).
+    <div class="legend">Les colonnes en jaune (<b>Pi²</b>, <b>Coûtant</b>, <b>Marge</b>) ne s'impriment jamais. Prix / mille = coût de revient ÷ (1 − marge), arrondi au 5 $ supérieur (le prix exact et la marge réelle s'affichent dessous, sans s'imprimer pour le client), où le coût de revient = coût + frais avant marge (bouton <b>+ frais</b> sous la marge : surcharge carburant, transport, autres, en $ ou en %, chacun avant ou après la marge ; les frais après marge s'ajoutent au prix de vente).
       <b>Pi² / unité</b> : calculés à partir des dimensions (ex. <i>49 x 97</i>, <i>4' x 8'</i>, <i>2800 x 2070 mm</i>) et modifiables à la main.
       Prix / unité = prix/mille × pi² ÷ 1000. Si la case Pi² est vide, le coût est un coût unitaire : le prix / unité = coût ÷ (1 − marge) et aucun prix au mille n'est affiché (un prix / mille entré à la main donne alors prix/mille ÷ 1000).
       Vous pouvez aussi entrer directement un prix : la marge est alors calculée (en brun). Si un prix / mille est entré, il a priorité sur le prix / unité.
@@ -687,7 +690,7 @@
       '<td class="num internal"><input data-f="cost" inputmode="decimal"><div class="feelist" data-a="fees" title="Cliquer pour modifier les frais"></div></td>' +
       '<td class="num internal"><input data-f="marge" inputmode="decimal">' +
         '<button type="button" class="fees" data-a="fees" title="Surcharge carburant, transport, autres frais">+ frais</button></td>' +
-      '<td class="num calc resettable"><input data-f="vm" inputmode="decimal" placeholder="vide">' + RESET +
+      '<td class="num calc resettable"><input data-f="vm" inputmode="decimal" placeholder="vide"><div class="vmexact"></div>' + RESET +
         '<textarea data-f="vmnote" class="pnote" rows="1" placeholder="Note"></textarea></td>' +
       '<td class="num calc resettable"><input data-f="vu" inputmode="decimal" placeholder="vide">' + RESET +
         '<textarea data-f="vunote" class="pnote" rows="1" placeholder="Note"></textarea></td>' +
@@ -806,6 +809,8 @@
     if (data.hidden) setRowHidden(tr, true);
     tr._order = data.order ? JSON.parse(JSON.stringify(data.order)) : {};
     tr.classList.toggle("has-sn", !!(data.sellernote || "").trim());
+    // Marge visée (celle tapée), pour afficher le vrai prix calculé même si le prix est arrondi à la main
+    tr.dataset.targetMarge = data.targetMarge != null ? data.targetMarge : (data.vmManual || data.vuManual ? "" : (data.marge || ""));
     ["cost", "marge", "vm", "vu"].forEach(function (f) { formatField(q(tr, f)); });
     if (after) after.after(tr); else tbody.appendChild(tr);
     recalcRow(tr);
@@ -850,9 +855,10 @@
     var vmBlank = vmManual && !isFinite(vmVal), vuBlank = vuManual && !isFinite(vuVal);
     // Sans pi² (ou vendant / mille vidé) : prix à l'unité = coût de revient ÷ (1 − marge)
     var unitMode = vmBlank || !hasSq;
-    var vm, priceDriven = false, priceForMargin, unitPrice = NaN;
+    var vm, priceDriven = false, priceForMargin, unitPrice = NaN, exactVm = NaN;
     if (vmManual && !vmBlank) {
       vm = vmVal; priceDriven = true; priceForMargin = removeAfterFees(vm, fees);
+      if (!unitMode) exactVm = addAfterFees(priceFromCost(cost, parseNum(tr.dataset.targetMarge)), fees);
     } else if (vuManual && !vuBlank) {
       // Item vendu à l'unité : pas de prix au mille, le coût est un coût unitaire
       vm = NaN; if (!vmManual) vmI.value = "";
@@ -860,13 +866,25 @@
     } else {
       var p = addAfterFees(priceFromCost(cost, parseNum(margeI.value)), fees);
       if (unitMode) { vm = NaN; unitPrice = p; if (!vmManual) vmI.value = ""; }
-      else { vm = p; vmI.value = fmtD(vm); }
+      else {
+        // Prix au mille calculé : arrondi au 5 $ supérieur ; le prix exact reste affiché dessous
+        exactVm = p;
+        vm = isFinite(p) ? Math.ceil(p / 5 - 1e-9) * 5 : NaN;
+        vmI.value = fmtD(vm);
+      }
     }
     if (priceDriven) {
       var m = marginFromPrice(cost, priceForMargin);
       margeI.value = fmtP(m);
     }
     margeI.classList.toggle("derived", priceDriven);
+    // Vrai prix (non arrondi) sous le prix au mille, si différent ; marge réelle obtenue au prix affiché
+    var ex = tr.querySelector(".vmexact"), exTxt = "";
+    if (isFinite(exactVm) && isFinite(vm) && Math.abs(exactVm - vm) >= 0.005) {
+      var realM = marginFromPrice(cost, removeAfterFees(vm, fees));
+      exTxt = "Calculé : " + fmtD(exactVm) + (isFinite(realM) ? " · marge réelle " + fmtP(realM) : "");
+    }
+    ex.textContent = exTxt;
 
     var vu;
     if (vuManual) {
@@ -916,6 +934,7 @@
     // Un vendant / mille saisi a priorité : le vendant / unité redevient calculé
     if (f === "vm" && el.value.trim() !== "") q(tr, "vu").classList.remove("manual");
     // Saisir une marge = c'est elle qui fixe le prix (les cases vidées volontairement restent vides)
+    if (f === "marge") tr.dataset.targetMarge = el.value;
     if (f === "marge") ["vm", "vu"].forEach(function (k) {
       var i = q(tr, k); if (i.value.trim() !== "") i.classList.remove("manual");
     });
@@ -1030,6 +1049,7 @@
     d.vmManual = q(tr, "vm").classList.contains("manual");
     d.vuManual = q(tr, "vu").classList.contains("manual");
     d.sqftManual = q(tr, "sqft").classList.contains("manual");
+    if (tr.dataset.targetMarge) d.targetMarge = tr.dataset.targetMarge;
     if (tr.classList.contains("row-hidden")) d.hidden = true;
     var fees = getFees(tr); if (Object.keys(fees).length) d.fees = fees;
     if (orderHasData(tr._order)) d.order = tr._order;
