@@ -1569,7 +1569,7 @@
   // Une soumission acceptée passe en mode « commande ». Le suivi de chaque item est gardé
   // dans tr._order et enregistré dans le même .json que la soumission :
   //   type ("commande" | "stock"), bo (stock tombé en back order), stockQty / boQty (partage stock / BO),
-  //   orderDate, etaDate, qtyOrdered (qté du projet), receipts [{date, qty, note}],
+  //   orderDate, qtyOrdered (qté du projet), receipts [{date, qty, note}],
   //   deliveries [{date, qty, dn, state: "done" | "planned", note}], notes, removed.
   var currentMode = "soumission";
   var editing = new WeakSet();  // réceptions / livraisons en cours de modification
@@ -1646,9 +1646,9 @@
     else st = { k: "todo", t: o.bo ? "BO à commander" : "À commander" };
     // En retard : réception prévue (date du suivi ou réception « Prévue ») dépassée sans avoir tout reçu
     var lateRec = (o.receipts || []).some(function (e) { return isPlanned(e) && e.date && e.date < today(); });
-    st.late = !!(st.k !== "delivered" && ((needsSupplier(o) && o.etaDate && o.etaDate < today() && !(hasT && R >= T)) || lateRec));
+    st.late = !!(st.k !== "delivered" && lateRec);
     st.lateDate = lateRec ? (o.receipts || []).filter(function (e) { return isPlanned(e) && e.date && e.date < today(); })
-      .map(function (e) { return e.date; }).sort()[0] : o.etaDate;
+      .map(function (e) { return e.date; }).sort()[0] : "";
     st.Q = Q; st.T = T; st.R = R; st.RP = RP; st.L = L; st.P = P;
     st.Rest = isFinite(Q) ? Math.max(0, Q - L) : NaN;          // reste à livrer (les livraisons prévues ne sont pas encore livrées)
     st.Unplanned = isFinite(Q) ? Math.max(0, Q - L - P) : NaN; // reste à planifier
@@ -1779,7 +1779,7 @@
     if (!sup) h += '<div class="dim">—</div>';
     else h += '<div>' + (o.orderDate ? "Commandé " + esc(fmtDay(o.orderDate)) : '<span style="color:#6b6b6b">Pas commandé</span>') +
       (supQtyNote(tr) ? '<span class="m">' + esc(supQtyNote(tr)) + '</span>' : "") +
-      (o.etaDate ? '<span class="m' + (st.late ? " late-t" : "") + '">Prévu ' + esc(fmtDay(o.etaDate)) + '</span>' : "") + '</div>';
+      '</div>';
     if (!sup && !o.receipts.length) h += '<div class="dim">—</div>';
     else h += '<div><span class="b">' + fmtQty(st.R) + (sup ? " / " + (isFinite(st.T) ? fmtQty(st.T) : "?") : "") + '</span>' +
       o.receipts.slice().sort(function (a, b) { return (a.date || "").localeCompare(b.date || ""); }).map(function (e) {
@@ -1846,7 +1846,20 @@
     save(); renderOrder();
   });
 
+  // Anciens fichiers : la case « Réception prévue » (retirée) devient une réception « Prévue » de ce qui reste à recevoir
+  function migrateEta() {
+    var changed = false;
+    soumRows().forEach(function (tr) {
+      var o = tr._order; if (!o || !o.etaDate) return;
+      o.receipts = o.receipts || [];
+      var st = orderStatus(tr), left = st.T - st.R - st.RP;
+      if (needsSupplier(o) && isFinite(left) && left > 0) o.receipts.push({ date: o.etaDate, qty: fmtQty(left), note: "", state: "planned" });
+      delete o.etaDate; changed = true;
+    });
+    if (changed) save();
+  }
   function renderOrder() {
+    migrateEta();
     autoCompleteDeliveries();
     renderInfo();
     if (!$("oAlt").contains(document.activeElement)) renderAlt();
@@ -1893,7 +1906,7 @@
     }
     if (sup) {
       h += '<div class="od-2"><div><label class="k" for="odOrd">Commandé le</label><input id="odOrd" type="date" data-ok="orderDate" value="' + esc(o.orderDate) + '"></div>' +
-        '<div><label class="k" for="odEta">Réception prévue</label><input id="odEta" type="date" data-ok="etaDate" value="' + esc(o.etaDate) + '"></div></div>';
+        '<div></div></div>';
     }
     if (mode === "commande") {
       h += '<div class="od-2"><div><label class="k" for="odSup">Qté commandée au fournisseur</label><input id="odSup" data-ok="supQty" inputmode="decimal" value="' +
@@ -2224,7 +2237,7 @@
         '<td class="r nw">' + esc(vu) + (vm ? '<span class="m">' + esc(vm) + ' / M</span>' : "") + '</td>' +
         (sup ? '<td class="nw1">' + (o.orderDate ? "Cmd " + esc(fmtDay(o.orderDate)) : '<span class="g">À cmd</span>') +
           (supQtyNote(tr) ? '<span class="m">Qté cmd : ' + esc(fmtQty(parseNum(o.supQty))) + '</span>' : "") +
-          (o.etaDate ? '<span class="m' + (st.late ? " late" : "") + '">Prév. ' + esc(fmtDay(o.etaDate)) + '</span>' : "") + '</td>' : '<td class="g">—</td>') +
+          '</td>' : '<td class="g">—</td>') +
         (sup || (o.receipts && o.receipts.length) ? '<td><b>' + fmtQty(st.R) + (sup ? " / " + (isFinite(st.T) ? fmtQty(st.T) : "?") : "") + '</b>' +
           (o.receipts || []).map(function (e) {
             return '<span class="' + (isPlanned(e) ? "pl" : "dl m") + '">' + esc((fmtDay(e.date) || "?") + " · " + (e.qty || "?") + (isPlanned(e) ? " · prév." : "")) + '</span>';
@@ -2259,6 +2272,7 @@
   }
   var orderTitle = null;
   function printOrder(kind) {
+    migrateEta();
     autoCompleteDeliveries();
     var doc = $("printDoc");
     doc.innerHTML = kind === "client" ? buildClientReport() : buildTrackingSheet();
