@@ -338,8 +338,10 @@
   .o-filters button.on .n { color: var(--ink); }
   .o-filters button[data-f="retard"] .n { color: var(--danger); }
   .o-list-wrap { overflow-x: auto; margin-top: 6px; }
-  .o-list { min-width: 1200px; }
-  .o-r { display: grid; grid-template-columns: minmax(200px, 2fr) 116px 48px 112px 132px 92px minmax(200px, 1.6fr) 50px 50px 140px 76px;
+  .o-list { min-width: 1270px; }
+  .o-r > div { min-width: 0; }
+  .o-r .rc { white-space: normal; }
+  .o-r { display: grid; grid-template-columns: minmax(200px, 2fr) 116px 48px 112px 132px 150px minmax(210px, 1.6fr) 50px 50px 140px 76px;
     gap: 0 16px; padding: 13px 4px; border-bottom: 1px solid #ebe8e5; align-items: start; }
   .o-r.o-h { padding: 8px 4px; border-bottom: 1px solid var(--ink); font-size: 12px; font-weight: 600; color: #6b6b6b; }
   .o-r:not(.o-h) { cursor: pointer; }
@@ -1784,7 +1786,7 @@
     else h += '<div><span class="b">' + fmtQty(st.R) + (sup ? " / " + (isFinite(st.T) ? fmtQty(st.T) : "?") : "") + '</span>' +
       o.receipts.slice().sort(function (a, b) { return (a.date || "").localeCompare(b.date || ""); }).map(function (e) {
         var t = (fmtDay(e.date) || "?") + " · " + (e.qty || "?") + (isPlanned(e) ? " · prévue" : "");
-        return '<span class="' + (isPlanned(e) ? "plan" + (e.date && e.date < today() ? " late-t" : "") : "m") + '">' + esc(t) + '</span>';
+        return '<span class="rc ' + (isPlanned(e) ? "plan" + (e.date && e.date < today() ? " late-t" : "") : "m") + '">' + esc(t) + '</span>';
       }).join("") + '</div>';
     var dl = sortedDeliveries(o);
     h += '<div>' + (dl.length ? dl.map(function (e) {
