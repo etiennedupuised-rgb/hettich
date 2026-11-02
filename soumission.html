@@ -353,6 +353,7 @@
   .o-r .late-t { color: var(--danger); font-weight: 600; }
   .o-r .plan { display: block; color: #1d4f86; font-style: italic; white-space: nowrap; }
   .o-r .done-l { display: block; white-space: nowrap; }
+  .o-r .plan.late-t, .o-drawer .o-entry.o-entry-view.is-late { color: var(--danger); }
   .o-r .stc { display: flex; gap: 8px; align-items: baseline; }
   .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex: none; background: #8a8a8a; }
   .dot.k-todo { background: #8a8a8a; } .dot.k-ordered, .dot.k-planned { background: #1d4f86; }
@@ -1631,7 +1632,9 @@
   // Statut calculé à partir des quantités, des dates et du type
   function orderStatus(tr) {
     var o = tr._order || {}, Q = projectQty(tr);
-    var R = sumEntries(o.receipts), L = sumEntries(o.deliveries, isDone), P = sumEntries(o.deliveries, isPlanned);
+    // Réceptions : « Reçue » compte dans le reçu ; « Prévue » = arrivage attendu (date et quantité)
+    var R = sumEntries(o.receipts, isDone), RP = sumEntries(o.receipts, isPlanned);
+    var L = sumEntries(o.deliveries, isDone), P = sumEntries(o.deliveries, isPlanned);
     var hasQ = isFinite(Q) && Q > 0, T = receiveTarget(tr), hasT = isFinite(T) && T > 0, st;
     if (hasQ && L >= Q) st = { k: "delivered", t: "Livré" };
     else if (L > 0) st = { k: "partdel", t: "Livré partiel" };
@@ -1641,8 +1644,12 @@
     else if (R > 0) st = { k: "partrec", t: "Reçu partiel" };
     else if ((o.orderDate || "").trim()) st = { k: "ordered", t: o.bo ? "BO commandé" : "Commandé" };
     else st = { k: "todo", t: o.bo ? "BO à commander" : "À commander" };
-    st.late = !!(needsSupplier(o) && o.etaDate && o.etaDate < today() && !(hasT && R >= T) && st.k !== "delivered");
-    st.Q = Q; st.T = T; st.R = R; st.L = L; st.P = P;
+    // En retard : réception prévue (date du suivi ou réception « Prévue ») dépassée sans avoir tout reçu
+    var lateRec = (o.receipts || []).some(function (e) { return isPlanned(e) && e.date && e.date < today(); });
+    st.late = !!(st.k !== "delivered" && ((needsSupplier(o) && o.etaDate && o.etaDate < today() && !(hasT && R >= T)) || lateRec));
+    st.lateDate = lateRec ? (o.receipts || []).filter(function (e) { return isPlanned(e) && e.date && e.date < today(); })
+      .map(function (e) { return e.date; }).sort()[0] : o.etaDate;
+    st.Q = Q; st.T = T; st.R = R; st.RP = RP; st.L = L; st.P = P;
     st.Rest = isFinite(Q) ? Math.max(0, Q - L) : NaN;          // reste à livrer (les livraisons prévues ne sont pas encore livrées)
     st.Unplanned = isFinite(Q) ? Math.max(0, Q - L - P) : NaN; // reste à planifier
     // Disponible : en main (stock ou reçu) et ni livré ni déjà dans une livraison prévue
@@ -1679,7 +1686,9 @@
       var parts = [fmtShort(e.date) || (del ? "Date à confirmer" : "Date ?"), "Qté " + (e.qty || "?")];
       if (del && e.dn) parts.push("DN " + e.dn);
       if (del) parts.push(isPlanned(e) ? "Prévue" : (e.auto ? "Effectuée (auto, date passée)" : "Effectuée"));
-      return '<div class="o-entry o-entry-view' + (del && isPlanned(e) ? " is-planned" : "") + '" data-list="' + list + '" data-j="' + j + '">' +
+      else parts.push(isPlanned(e) ? (e.date && e.date < today() ? "Prévue — en retard" : "Prévue") : "Reçue");
+      return '<div class="o-entry o-entry-view' + (isPlanned(e) ? " is-planned" : "") + (!del && isPlanned(e) && e.date && e.date < today() ? " is-late" : "") +
+        '" data-list="' + list + '" data-j="' + j + '">' +
         '<span>' + esc(parts.join(" · ")) + (e.note ? ' <i>— ' + esc(e.note) + '</i>' : "") + '</span>' +
         '<button type="button" data-oa="editentry" title="Modifier" aria-label="Modifier">✎</button>' +
         '<button type="button" data-oa="delentry" title="Supprimer" aria-label="Supprimer">✕</button></div>';
@@ -1690,6 +1699,9 @@
     if (del) {
       h += '<input data-ek="dn" value="' + esc(e.dn) + '" placeholder="N° de DN" aria-label="Numéro de DN">' +
         '<select data-ek="state" aria-label="État"><option value="done"' + (isDone(e) ? " selected" : "") + '>Effectuée</option>' +
+        '<option value="planned"' + (isPlanned(e) ? " selected" : "") + '>Prévue</option></select>';
+    } else {
+      h += '<select data-ek="state" aria-label="État de la réception"><option value="done"' + (isDone(e) ? " selected" : "") + '>Reçue</option>' +
         '<option value="planned"' + (isPlanned(e) ? " selected" : "") + '>Prévue</option></select>';
     }
     return h + '<input data-ek="note" value="' + esc(e.note) + '" placeholder="Note (transporteur, back order…)" aria-label="Note">' +
@@ -1768,9 +1780,12 @@
     else h += '<div>' + (o.orderDate ? "Commandé " + esc(fmtDay(o.orderDate)) : '<span style="color:#6b6b6b">Pas commandé</span>') +
       (supQtyNote(tr) ? '<span class="m">' + esc(supQtyNote(tr)) + '</span>' : "") +
       (o.etaDate ? '<span class="m' + (st.late ? " late-t" : "") + '">Prévu ' + esc(fmtDay(o.etaDate)) + '</span>' : "") + '</div>';
-    if (!sup) h += '<div class="dim">—</div>';
-    else h += '<div><span class="b">' + fmtQty(st.R) + " / " + (isFinite(st.T) ? fmtQty(st.T) : "?") + '</span>' +
-      (o.receipts.length ? '<span class="m">' + esc(o.receipts.map(function (e) { return fmtDay(e.date) || "?"; }).join(", ")) + '</span>' : "") + '</div>';
+    if (!sup && !o.receipts.length) h += '<div class="dim">—</div>';
+    else h += '<div><span class="b">' + fmtQty(st.R) + (sup ? " / " + (isFinite(st.T) ? fmtQty(st.T) : "?") : "") + '</span>' +
+      o.receipts.slice().sort(function (a, b) { return (a.date || "").localeCompare(b.date || ""); }).map(function (e) {
+        var t = (fmtDay(e.date) || "?") + " · " + (e.qty || "?") + (isPlanned(e) ? " · prévue" : "");
+        return '<span class="' + (isPlanned(e) ? "plan" + (e.date && e.date < today() ? " late-t" : "") : "m") + '">' + esc(t) + '</span>';
+      }).join("") + '</div>';
     var dl = sortedDeliveries(o);
     h += '<div>' + (dl.length ? dl.map(function (e) {
       var t = (fmtDay(e.date) || "Date à confirmer") + " · " + (e.qty || "?") + (e.dn ? " · DN " + e.dn : "") + (isPlanned(e) ? " · prévue" : "");
@@ -1779,7 +1794,7 @@
     h += '<div class="r b' + (st.L ? "" : " dim") + '">' + fmtQty(st.L) + '</div>';
     h += '<div class="r b' + (st.Rest ? "" : " dim") + '">' + (isFinite(st.Q) ? fmtQty(st.Rest) : "") + '</div>';
     if (st.late) {
-      var d = daysLate(o.etaDate);
+      var d = daysLate(st.lateDate);
       h += '<div class="stc"><span class="dot k-late"></span><span><span class="late-t">En retard</span><span class="m">' +
         esc(st.t) + (d > 0 ? " · depuis " + d + " jour" + (d > 1 ? "s" : "") : "") + '</span></span></div>';
     } else {
@@ -1886,12 +1901,18 @@
         '<div class="od-hint">Si elle diffère de la qté du projet (ex. emballage complet, surplus). Vide = qté du projet.</div></div>';
     }
     h += '</section>';
-    if (sup) {
-      h += '<section><h2 id="odRecH">Réceptions du fournisseur · ' + fmtQty(st.R) + ' / ' + (isFinite(st.T) ? fmtQty(st.T) : "?") + '</h2>';
+    {
+      // Réceptions : reçues ou prévues (date + quantité), aussi pour un item en stock (réapprovisionnement)
+      var hasT = isFinite(st.T) && st.T > 0;
+      h += '<section><h2 id="odRecH">' + (sup ? "Réceptions du fournisseur" : "Réceptions (réapprovisionnement)") + ' · reçu ' + fmtQty(st.R) +
+        (hasT ? ' / ' + fmtQty(st.T) : "") + '</h2>' +
+        '<div class="od-qty"><span>Reçu <b>' + fmtQty(st.R) + '</b></span><span>Prévu <b>' + fmtQty(st.RP) + '</b></span>' +
+        (hasT ? '<span>Reste à recevoir <b>' + fmtQty(Math.max(0, st.T - st.R - st.RP)) + '</b> (non prévu)</span>' : "") + '</div>';
       o.receipts.forEach(function (e, j) { h += entryHtml("receipts", j, e); });
-      if (!o.receipts.length) h += '<div class="od-empty">Rien de reçu pour l\'instant.</div>';
-      h += '<div class="od-btns"><button type="button" data-oa="add" data-list="receipts">+ Réception</button>' +
-        (isFinite(st.T) && st.R < st.T ? '<button type="button" class="dark" data-oa="allrec">Tout reçu aujourd\'hui</button>' : "") + '</div></section>';
+      if (!o.receipts.length) h += '<div class="od-empty">' + (sup ? "Rien de reçu pour l\'instant." : "Aucune réception inscrite (facultatif pour un item en stock).") + '</div>';
+      h += '<div class="od-btns"><button type="button" data-oa="add" data-list="receipts">+ Réception (reçue ou prévue)</button>' +
+        (st.RP > 0 ? '<button type="button" class="dark" data-oa="confirmrec">Confirmer les réceptions prévues</button>' : "") +
+        (hasT && st.R + st.RP < st.T ? '<button type="button" data-oa="allrec">Tout reçu aujourd\'hui</button>' : "") + '</div></section>';
     }
     h += '<section><h2>Livraisons au client</h2>' +
       '<div class="od-qty"><span>Livré <b>' + fmtQty(st.L) + '</b></span><span>Prévu <b>' + fmtQty(st.P) + '</b></span>' +
@@ -2006,15 +2027,19 @@
     if (b.dataset.oa === "add") {
       var list = b.dataset.list;
       // Quantité proposée : ce qui reste à recevoir / à livrer
-      var left = list === "receipts" ? st.T - st.R : (st.Avail > 0 ? Math.min(st.Avail, st.Unplanned) : st.Unplanned);
-      var entry = { date: today(), qty: isFinite(left) && left > 0 ? fmtQty(left) : "", note: "" };
-      if (list === "deliveries") { entry.dn = ""; entry.state = "done"; }
+      var left = list === "receipts" ? st.T - st.R - st.RP : (st.Avail > 0 ? Math.min(st.Avail, st.Unplanned) : st.Unplanned);
+      var entry = { date: today(), qty: isFinite(left) && left > 0 ? fmtQty(left) : "", note: "", state: "done" };
+      if (list === "deliveries") { entry.dn = ""; }
       o[list].push(entry);
       editing.add(entry); // nouvelle entrée : en modification jusqu'à « OK »
     }
     if (b.dataset.oa === "allrec") {
-      var rest = st.T - st.R;
-      if (isFinite(rest) && rest > 0) o.receipts.push({ date: today(), qty: fmtQty(rest), note: "" });
+      var rest = st.T - st.R - st.RP;
+      if (isFinite(rest) && rest > 0) o.receipts.push({ date: today(), qty: fmtQty(rest), note: "", state: "done" });
+    }
+    if (b.dataset.oa === "confirmrec") {
+      // Les réceptions prévues sont arrivées : elles passent à « Reçue » (date conservée)
+      o.receipts.forEach(function (en) { if (isPlanned(en)) en.state = "done"; });
     }
     if (b.dataset.oa === "confirm") {
       o.deliveries.forEach(function (en) { if (isPlanned(en)) { en.state = "done"; en.auto = false; en.lock = false; } });
@@ -2187,7 +2212,7 @@
       var dl = sortedDeliveries(o);
       var stHtml;
       if (st.late) {
-        var d = daysLate(o.etaDate);
+        var d = daysLate(st.lateDate);
         stHtml = '<span class="dot k-late"></span><span><b class="late">Retard</b><span class="m">' + esc(ST_ABBR[st.t] || st.t) +
           (d > 0 ? " · " + d + " j" : "") + '</span></span>';
       } else stHtml = '<span class="dot k-' + st.k + '"></span><span>' + esc(ST_ABBR[st.t] || st.t) + '</span>';
@@ -2200,8 +2225,10 @@
         (sup ? '<td class="nw1">' + (o.orderDate ? "Cmd " + esc(fmtDay(o.orderDate)) : '<span class="g">À cmd</span>') +
           (supQtyNote(tr) ? '<span class="m">Qté cmd : ' + esc(fmtQty(parseNum(o.supQty))) + '</span>' : "") +
           (o.etaDate ? '<span class="m' + (st.late ? " late" : "") + '">Prév. ' + esc(fmtDay(o.etaDate)) + '</span>' : "") + '</td>' : '<td class="g">—</td>') +
-        (sup ? '<td><b>' + fmtQty(st.R) + " / " + (isFinite(st.T) ? fmtQty(st.T) : "?") + '</b>' +
-          (o.receipts && o.receipts.length ? '<span class="m">' + esc(o.receipts.map(function (e) { return (fmtDay(e.date) || "?") + " : " + (e.qty || "?"); }).join(", ")) + '</span>' : "") + '</td>' : '<td class="g">—</td>') +
+        (sup || (o.receipts && o.receipts.length) ? '<td><b>' + fmtQty(st.R) + (sup ? " / " + (isFinite(st.T) ? fmtQty(st.T) : "?") : "") + '</b>' +
+          (o.receipts || []).map(function (e) {
+            return '<span class="' + (isPlanned(e) ? "pl" : "dl m") + '">' + esc((fmtDay(e.date) || "?") + " · " + (e.qty || "?") + (isPlanned(e) ? " · prév." : "")) + '</span>';
+          }).join("") + '</td>' : '<td class="g">—</td>') +
         '<td>' + (dl.length ? dl.map(function (e) {
           var t = (fmtDay(e.date) || "À conf.") + " · " + (e.qty || "?") + (e.dn ? " · DN " + e.dn : "") + (isPlanned(e) ? " · prév." : "");
           return '<span class="' + (isPlanned(e) ? "pl" : "dl") + '">' + esc(t) + '</span>';
