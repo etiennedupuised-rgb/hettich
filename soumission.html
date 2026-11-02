@@ -473,6 +473,8 @@
   #printDoc .ts .dl { display: block; white-space: nowrap; }
   #printDoc .ts td.nw1 { white-space: nowrap; }
   #printDoc td.hist > div { white-space: nowrap; }
+  #printDoc .ts .rc { white-space: normal; }
+  #printDoc table.ts-t td { overflow-wrap: anywhere; }
   #printDoc .ts-abbr { margin-top: 6px; font-size: 9.5px; color: #5f5f5f; }
   #printDoc .ts .stc { display: flex; gap: 6px; align-items: baseline; }
   #printDoc .ts .dot { width: 7px; height: 7px; }
@@ -2199,7 +2201,7 @@
       '<div><h1>ÉTAT DES LIVRAISONS</h1><div class="pd-sub">N° : <b>' + esc($("quoteNo").value || "—") + '</b><br>En date du <b>' + esc(fmtDate(today())) + '</b></div></div></div>' +
       '<div class="pd-grid" style="grid-template-columns:minmax(0,1fr) minmax(0,1.8fr) minmax(0,.8fr) minmax(0,1.2fr)">' + pdField("Client", $("client").value) + pdField("Projet", $("project").value) + pdField("N° de PO du client", oh.clientPO) +
       pdField("Vendeur", $("seller").value) + '</div>' +
-      '<table style="table-layout:fixed"><thead><tr><th style="width:24%">Item</th><th style="width:7.5%">Qté totale du projet</th><th style="width:9.5%">Stock / sur commande</th>' +
+      '<table style="table-layout:fixed"><thead><tr><th style="width:22%">Item</th><th style="width:7.5%">Qté totale du projet</th><th style="width:11.5%">Stock / sur commande</th>' +
       '<th style="width:9%">Prix / unité</th><th style="width:35%">Livraisons (date · qté · DN)</th><th style="width:7%">Qté livrée</th><th style="width:8%">Qté restante à livrer</th></tr></thead><tbody>' + body + '</tbody></table>' +
       '<p class="small" style="margin-top:8px">Les dates des livraisons prévues sont données à titre indicatif et peuvent changer.</p>';
   }
@@ -2244,7 +2246,7 @@
           '</td>' : '<td class="g">—</td>') +
         (sup || (o.receipts && o.receipts.length) ? '<td><b>' + fmtQty(st.R) + (sup ? " / " + (isFinite(st.T) ? fmtQty(st.T) : "?") : "") + '</b>' +
           (o.receipts || []).map(function (e) {
-            return '<span class="' + (isPlanned(e) ? "pl" : "dl m") + '">' + esc((fmtDay(e.date) || "?") + " · " + qx(e) + (isPlanned(e) ? " · prév." : "")) + '</span>';
+            return '<span class="rc ' + (isPlanned(e) ? "pl" : "dl m") + '">' + esc((fmtDay(e.date) || "?") + " · " + qx(e) + (isPlanned(e) ? " · prév." : "")) + '</span>';
           }).join("") + '</td>' : '<td class="g">—</td>') +
         '<td>' + (dl.length ? dl.map(function (e) {
           var t = (fmtDay(e.date) || "À conf.") + " · " + qx(e) + (e.dn ? " · DN " + e.dn : "") + (isPlanned(e) ? " · prév." : "");
@@ -2266,8 +2268,8 @@
       '<div class="ts-info">' + info.map(function (f) {
         return '<div><span class="k">' + f[0] + '</span><span class="v">' + esc(f[1] || "—") + '</span></div>';
       }).join("") + '</div>' +
-      '<table class="ts-t"><colgroup><col style="width:20.5%"><col style="width:9%"><col style="width:4.5%"><col style="width:9.5%"><col style="width:9%">' +
-        '<col style="width:6.5%"><col style="width:23.5%"><col style="width:4.5%"><col style="width:4.5%"><col style="width:8.5%"></colgroup>' +
+      '<table class="ts-t"><colgroup><col style="width:17%"><col style="width:6%"><col style="width:4.5%"><col style="width:9%"><col style="width:8.5%">' +
+        '<col style="width:13%"><col style="width:25%"><col style="width:4.5%"><col style="width:4.5%"><col style="width:8%"></colgroup>' +
       '<thead><tr><th>Item</th><th>Type</th><th class="r">Qté</th><th class="r">Prix</th><th>Cmd fourn.</th><th>Reçu</th>' +
         '<th>Livraisons au client</th><th class="r">Livré</th><th class="r">Reste</th><th>Statut</th></tr></thead><tbody>' + body + '</tbody></table>' +
       '<div class="ts-abbr">Abréviations : Stk = stock · Cmd = sur commande / commandé · BO = back order · Prév. / prév. = prévu(e) · Liv. = livraison · part. = partiel · À conf. = date à confirmer · j = jours</div>' +
