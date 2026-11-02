@@ -1603,6 +1603,8 @@
   }
   function isDone(e) { return (e.state || "done") !== "planned"; }
   function isPlanned(e) { return e.state === "planned"; }
+  // Quantité d'une réception / livraison affichée avec un « x » : « 250x »
+  function qx(e) { var t = String(e.qty == null ? "" : e.qty).trim(); return t ? t + "x" : "?"; }
   function fmtQty(n) { return isFinite(n) ? num2.format(n).replace(/,00$/, "") : ""; }
   function isStock(o) { return o.type === "stock"; }
   function needsSupplier(o) { return !isStock(o) || !!o.bo; } // sur commande, ou stock en BO
@@ -1685,7 +1687,7 @@
     var h = '<div class="o-entry ' + (del ? "o-entry-del" : "") + '" data-list="' + list + '" data-j="' + j + '">';
     if (!editing.has(e)) {
       // Une fois entrée, l'information s'affiche en texte ; ✎ pour la modifier
-      var parts = [fmtShort(e.date) || (del ? "Date à confirmer" : "Date ?"), "Qté " + (e.qty || "?")];
+      var parts = [fmtShort(e.date) || (del ? "Date à confirmer" : "Date ?"), qx(e)];
       if (del && e.dn) parts.push("DN " + e.dn);
       if (del) parts.push(isPlanned(e) ? "Prévue" : (e.auto ? "Effectuée (auto, date passée)" : "Effectuée"));
       else parts.push(isPlanned(e) ? (e.date && e.date < today() ? "Prévue — en retard" : "Prévue") : "Reçue");
@@ -1785,12 +1787,12 @@
     if (!sup && !o.receipts.length) h += '<div class="dim">—</div>';
     else h += '<div><span class="b">' + fmtQty(st.R) + (sup ? " / " + (isFinite(st.T) ? fmtQty(st.T) : "?") : "") + '</span>' +
       o.receipts.slice().sort(function (a, b) { return (a.date || "").localeCompare(b.date || ""); }).map(function (e) {
-        var t = (fmtDay(e.date) || "?") + " · " + (e.qty || "?") + (isPlanned(e) ? " · prévue" : "");
+        var t = (fmtDay(e.date) || "?") + " · " + qx(e) + (isPlanned(e) ? " · prévue" : "");
         return '<span class="rc ' + (isPlanned(e) ? "plan" + (e.date && e.date < today() ? " late-t" : "") : "m") + '">' + esc(t) + '</span>';
       }).join("") + '</div>';
     var dl = sortedDeliveries(o);
     h += '<div>' + (dl.length ? dl.map(function (e) {
-      var t = (fmtDay(e.date) || "Date à confirmer") + " · " + (e.qty || "?") + (e.dn ? " · DN " + e.dn : "") + (isPlanned(e) ? " · prévue" : "");
+      var t = (fmtDay(e.date) || "Date à confirmer") + " · " + qx(e) + (e.dn ? " · DN " + e.dn : "") + (isPlanned(e) ? " · prévue" : "");
       return '<span class="' + (isPlanned(e) ? "plan" : "done-l") + '">' + esc(t) + '</span>';
     }).join("") : '<span class="dim">—</span>') + '</div>';
     h += '<div class="r b' + (st.L ? "" : " dim") + '">' + fmtQty(st.L) + '</div>';
@@ -2175,7 +2177,7 @@
     var list = sortedDeliveries(o);
     if (!list.length) return '<span class="small">Aucune livraison inscrite</span>';
     return list.map(function (e) {
-      return '<div class="' + (isPlanned(e) ? "pd-planned" : "") + '">' + esc(fmtShort(e.date) || "Date à confirmer") + " · " + esc(e.qty || "?") +
+      return '<div class="' + (isPlanned(e) ? "pd-planned" : "") + '">' + esc(fmtShort(e.date) || "Date à confirmer") + " · " + esc(qx(e)) +
         (e.dn ? " · DN " + esc(e.dn) : "") + ' <span class="small">(' + (isPlanned(e) ? "prévue" : "effectuée") + ')</span></div>';
     }).join("");
   }
@@ -2203,7 +2205,7 @@
   }
   function histTxt(list, withDn) {
     return (list || []).map(function (e) {
-      return esc((e.date ? fmtShort(e.date) : "—") + " : " + (e.qty || "?") + (withDn && e.dn ? " · DN " + e.dn : "") +
+      return esc((e.date ? fmtShort(e.date) : "—") + " · " + qx(e) + (withDn && e.dn ? " · DN " + e.dn : "") +
         (withDn && isPlanned(e) ? " (prévue)" : "") + (e.note ? " (" + e.note + ")" : ""));
     }).join("<br>");
   }
@@ -2242,10 +2244,10 @@
           '</td>' : '<td class="g">—</td>') +
         (sup || (o.receipts && o.receipts.length) ? '<td><b>' + fmtQty(st.R) + (sup ? " / " + (isFinite(st.T) ? fmtQty(st.T) : "?") : "") + '</b>' +
           (o.receipts || []).map(function (e) {
-            return '<span class="' + (isPlanned(e) ? "pl" : "dl m") + '">' + esc((fmtDay(e.date) || "?") + " · " + (e.qty || "?") + (isPlanned(e) ? " · prév." : "")) + '</span>';
+            return '<span class="' + (isPlanned(e) ? "pl" : "dl m") + '">' + esc((fmtDay(e.date) || "?") + " · " + qx(e) + (isPlanned(e) ? " · prév." : "")) + '</span>';
           }).join("") + '</td>' : '<td class="g">—</td>') +
         '<td>' + (dl.length ? dl.map(function (e) {
-          var t = (fmtDay(e.date) || "À conf.") + " · " + (e.qty || "?") + (e.dn ? " · DN " + e.dn : "") + (isPlanned(e) ? " · prév." : "");
+          var t = (fmtDay(e.date) || "À conf.") + " · " + qx(e) + (e.dn ? " · DN " + e.dn : "") + (isPlanned(e) ? " · prév." : "");
           return '<span class="' + (isPlanned(e) ? "pl" : "dl") + '">' + esc(t) + '</span>';
         }).join("") : '<span class="g">—</span>') + '</td>' +
         '<td class="r b' + (st.L ? "" : " g") + '">' + fmtQty(st.L) + '</td>' +
